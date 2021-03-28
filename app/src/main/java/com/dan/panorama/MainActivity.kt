@@ -24,6 +24,10 @@ class MainActivity : AppCompatActivity() {
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
 
+    init {
+        BusyDialog.create(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
