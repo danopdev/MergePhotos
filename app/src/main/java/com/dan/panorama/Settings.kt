@@ -12,6 +12,11 @@ Settings: all public var fields will be saved
  */
 class Settings( private val activity: Activity) {
 
+    companion object {
+        const val SAVE_FOLDER = "/storage/emulated/0/Panorama"
+        const val SAVE_QUALITY = 100
+    }
+
     init {
         loadProperties()
     }
