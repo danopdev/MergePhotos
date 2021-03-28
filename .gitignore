@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+/app/keystore.config
+/.idea/vcs.xml
