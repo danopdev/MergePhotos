@@ -4,6 +4,13 @@ plugins {
 }
 
 android {
+    packagingOptions {
+        pickFirst 'META-INF/native-image/android-arm64/jnijavacpp/jni-config.json'
+        pickFirst 'META-INF/native-image/android-arm64/jnijavacpp/reflect-config.json'
+        pickFirst 'META-INF/native-image/android-arm/jnijavacpp/jni-config.json'
+        pickFirst 'META-INF/native-image/android-arm/jnijavacpp/reflect-config.json'
+    }
+
     signingConfigs {
         'default' {
             Properties keystoreProps = new Properties()
@@ -62,5 +69,12 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
-    implementation 'com.quickbirdstudios:opencv:4.3.0-contrib'
+    //implementation 'com.quickbirdstudios:opencv:4.3.0-contrib'
+    implementation "org.bytedeco:javacv:1.5.5"
+    implementation group: 'org.bytedeco', name: 'openblas', version: '0.3.13-1.5.5'
+    implementation group: 'org.bytedeco', name: 'openblas', version: '0.3.13-1.5.5', classifier: "android-arm64"
+    implementation group: 'org.bytedeco', name: 'openblas', version: '0.3.13-1.5.5', classifier: "android-arm"
+    implementation group: 'org.bytedeco', name: 'opencv', version: '4.5.1-1.5.5'
+    implementation group: 'org.bytedeco', name: 'opencv', version: '4.5.1-1.5.5', classifier: "android-arm64"
+    implementation group: 'org.bytedeco', name: 'opencv', version: '4.5.1-1.5.5', classifier: "android-arm"
 }
