@@ -276,18 +276,24 @@ class MainActivity : AppCompatActivity() {
     private fun onPermissionsAllowed() {
         setContentView(mBinding.root)
 
-        /*
+        val start = System.currentTimeMillis()
+
         loadImages(true) { images ->
             makePanorama(images, PANORAMA_MODE_PLANE) { panorama ->
+                val end = System.currentTimeMillis()
+                Log.i("STITCHER", "Time: ${(end - start).toDouble() / 1000.0} second(s)")
+                mBinding.imageView.setImageBitmap(panorama)
+            }
+        }
+
+        /*
+        loadImagesGpu(true) { images ->
+            makePanoramaGpu(images, PANORAMA_MODE_PLANE) { panorama ->
+                val end = System.currentTimeMillis()
+                Log.i("STITCHER", "GPU Time: ${(end - start).toDouble() / 1000.0} second(s)")
                 mBinding.imageView.setImageBitmap(panorama)
             }
         }
         */
-
-        loadImagesGpu(true) { images ->
-            makePanoramaGpu(images, PANORAMA_MODE_PLANE) { panorama ->
-                mBinding.imageView.setImageBitmap(panorama)
-            }
-        }
     }
 }
