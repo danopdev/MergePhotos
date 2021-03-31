@@ -207,77 +207,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadImageGpu(path: String, small: Boolean): GpuMat? {
-        val img = imread(path)
-        if (img.empty()) return null
-
-        Log.i("STITCHER", "Load OK: $path")
-        val imgGpu = GpuMat(img)
-        if (!small) return imgGpu
-
-        val widthSmall = IMG_WORK_SIZE
-        val heightSmall = IMG_WORK_SIZE * img.rows() / img.cols()
-        val imgSmallGpu = GpuMat()
-        resize(imgGpu, imgSmallGpu, Size(widthSmall, heightSmall))
-        return imgSmallGpu
-    }
-
-    private fun loadImagesGpu( small: Boolean, l: (images: GpuMatVector)->Unit) {
-        BusyDialog.show(supportFragmentManager)
-
-        GlobalScope.launch(Dispatchers.Default) {
-            val images = GpuMatVector()
-            for (i in 1..5) {
-                loadImageGpu("/storage/emulated/0/Panorama/$i.jpg", small)?.let{ imgGpu ->
-                    if (!imgGpu.empty()) {
-                        images.push_back(imgGpu)
-                    }
-                }
-            }
-
-            runOnUiThread {
-                BusyDialog.dismiss()
-                l.invoke(images)
-            }
-        }
-    }
-
-    private fun makePanoramaGpu( images: GpuMatVector, mode: Int, l: (panorama: Bitmap?)->Unit ) {
-        BusyDialog.show(supportFragmentManager)
-
-        GlobalScope.launch(Dispatchers.Default) {
-            Log.i("STITCHER", "Start")
-            val panoramaMat = GpuMat()
-            val stitcher = Stitcher.create(Stitcher.PANORAMA)
-
-            when(mode) {
-                PANORAMA_MODE_CYLINDRICAL -> stitcher.setWarper(CylindricalWarper())
-                PANORAMA_MODE_SPHERICAL -> stitcher.setWarper(SphericalWarper())
-                else -> stitcher.setWarper(PlaneWarper())
-            }
-
-            val status = stitcher.stitch(images, panoramaMat)
-            var panorama: Bitmap? = null
-
-            if (status == Stitcher.OK) {
-                Log.i("STITCHER", "Success")
-                panorama = matToBitmap(Mat(panoramaMat))
-            } else {
-                Log.i("STITCHER", "Failed")
-            }
-
-            runOnUiThread {
-                BusyDialog.dismiss()
-                l.invoke(panorama)
-            }
-        }
-    }
-
     private fun onPermissionsAllowed() {
         setContentView(mBinding.root)
 
         val start = System.currentTimeMillis()
-
         loadImages(true) { images ->
             makePanorama(images, PANORAMA_MODE_PLANE) { panorama ->
                 val end = System.currentTimeMillis()
@@ -285,15 +218,5 @@ class MainActivity : AppCompatActivity() {
                 mBinding.imageView.setImageBitmap(panorama)
             }
         }
-
-        /*
-        loadImagesGpu(true) { images ->
-            makePanoramaGpu(images, PANORAMA_MODE_PLANE) { panorama ->
-                val end = System.currentTimeMillis()
-                Log.i("STITCHER", "GPU Time: ${(end - start).toDouble() / 1000.0} second(s)")
-                mBinding.imageView.setImageBitmap(panorama)
-            }
-        }
-        */
     }
 }

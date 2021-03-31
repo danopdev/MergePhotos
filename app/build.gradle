@@ -5,10 +5,8 @@ plugins {
 
 android {
     packagingOptions {
-        pickFirst 'META-INF/native-image/android-arm64/jnijavacpp/jni-config.json'
-        pickFirst 'META-INF/native-image/android-arm64/jnijavacpp/reflect-config.json'
-        pickFirst 'META-INF/native-image/android-arm/jnijavacpp/jni-config.json'
-        pickFirst 'META-INF/native-image/android-arm/jnijavacpp/reflect-config.json'
+        pickFirst 'META-INF/native-image/*/jnijavacpp/jni-config.json'
+        pickFirst 'META-INF/native-image/*/jnijavacpp/reflect-config.json'
     }
 
     signingConfigs {
