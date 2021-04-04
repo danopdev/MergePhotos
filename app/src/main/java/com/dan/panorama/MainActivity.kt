@@ -14,6 +14,8 @@ import com.dan.panorama.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.bytedeco.opencv.global.opencv_core.haveOpenCL
+import org.bytedeco.opencv.global.opencv_core.useOpenCL
 import org.bytedeco.opencv.global.opencv_imgcodecs.*
 import org.bytedeco.opencv.global.opencv_imgproc.resize
 import org.bytedeco.opencv.opencv_core.*
@@ -183,7 +185,6 @@ class MainActivity : AppCompatActivity() {
     private fun loadImage2(path: String, small: Boolean): UMat {
         val img = imread(path)
         if (img.empty()) return UMat()
-        if (img.empty()) return UMat()
 
         Log.i("STITCHER", "Load OK: $path")
         if (!small) return UMat(img)
@@ -249,6 +250,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun onPermissionsAllowed() {
         setContentView(mBinding.root)
+
+        Log.i("STITCHER", "Has OpenCL: ${haveOpenCL()}")
+        Log.i("STITCHER", "Use OpenCL: ${useOpenCL()}")
 
         loadImages(true) { images ->
             makePanorama(images, PANORAMA_MODE_PLANE) { panorama ->
