@@ -77,4 +77,5 @@ dependencies {
     implementation group: 'org.bytedeco', name: 'opencv', version: '4.5.1-1.5.5', classifier: "android-arm64"
     implementation group: 'org.bytedeco', name: 'opencv', version: '4.5.1-1.5.5', classifier: "android-arm"
     implementation 'com.github.MikeOrtiz:TouchImageView:3.0.6'
+    implementation "androidx.documentfile:documentfile:1.0.1"
 }

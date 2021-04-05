@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import com.dan.panorama.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -49,11 +50,13 @@ class MainActivity : AppCompatActivity() {
 
         const val TMP_FILE_NAME = "tmp.png"
 
+        const val PANORAMA_DEFAULT_NAME = "panorama"
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val mImages = MatVector()
     private val mImagesSmall = MatVector()
+    private var mOutputName = PANORAMA_DEFAULT_NAME
 
     init {
         BusyDialog.create(this)
@@ -97,6 +100,7 @@ class MainActivity : AppCompatActivity() {
 
         if (resultCode == RESULT_OK && requestCode == INTENT_OPEN_IMAGES) {
             imagesClear()
+            mOutputName = PANORAMA_DEFAULT_NAME
             BusyDialog.show(supportFragmentManager)
 
             GlobalScope.launch(Dispatchers.IO) {
@@ -104,6 +108,15 @@ class MainActivity : AppCompatActivity() {
                     var count = clipData.itemCount
 
                     for (i in 0 until count) {
+                        try {
+                            if (0 == i) {
+                                DocumentFile.fromTreeUri(applicationContext, clipData.getItemAt(i).uri)?.name?.let { name ->
+                                    if (name.length > 0) mOutputName = name
+                                }
+                            }
+                        } catch (e: Exception) {
+                        }
+
                         try {
                             contentResolver.openInputStream(clipData.getItemAt(i).uri)?.let { inputStream ->
                                 BitmapFactory.decodeStream( inputStream )?.let{ bitmap ->
