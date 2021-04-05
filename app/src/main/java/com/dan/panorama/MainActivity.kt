@@ -264,11 +264,4 @@ class MainActivity : AppCompatActivity() {
             makePanoramaSmall()
         }
     }
-
-    private fun measureTime(msg: String, l: ()->Unit) {
-        val startTime = System.currentTimeMillis()
-        l.invoke()
-        val endTime = System.currentTimeMillis()
-        Log.i("STITCHER", "$msg: ${(endTime - startTime).toDouble() / 1000.0} second(s)")
-    }
 }
