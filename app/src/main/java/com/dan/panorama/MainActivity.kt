@@ -14,8 +14,7 @@ import com.dan.panorama.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.bytedeco.opencv.global.opencv_core.haveOpenCL
-import org.bytedeco.opencv.global.opencv_core.useOpenCL
+import org.bytedeco.opencv.global.opencv_core.*
 import org.bytedeco.opencv.global.opencv_imgcodecs.*
 import org.bytedeco.opencv.global.opencv_imgproc.resize
 import org.bytedeco.opencv.opencv_core.*
@@ -121,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         if (img.empty()) return img
 
         Log.i("STITCHER", "Load OK: $path")
-        if (!small) return img
+        if (!small) return img.clone()
 
         val widthSmall = IMG_WORK_SIZE
         val heightSmall = IMG_WORK_SIZE * img.rows() / img.cols()
@@ -186,14 +185,14 @@ class MainActivity : AppCompatActivity() {
         val img = imread(path)
         if (img.empty()) return UMat()
 
-        Log.i("STITCHER", "Load OK: $path")
-        if (!small) return UMat(img)
+        Log.i("STITCHER", "Load (2) OK: $path")
+        if (!small) return img.clone().getUMat(ACCESS_FAST)
 
         val widthSmall = IMG_WORK_SIZE
         val heightSmall = IMG_WORK_SIZE * img.rows() / img.cols()
         val imgSmall = Mat()
         resize(img, imgSmall, Size(widthSmall, heightSmall))
-        return UMat(imgSmall)
+        return imgSmall.getUMat(ACCESS_FAST)
     }
 
     private fun loadImages2( small: Boolean, l: (images: UMatVector)->Unit) {
@@ -220,7 +219,7 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         GlobalScope.launch(Dispatchers.IO) {
-            Log.i("STITCHER", "Start")
+            Log.i("STITCHER", "Start (2)")
             val panoramaMat = UMat()
             val stitcher = Stitcher.create(Stitcher.PANORAMA)
 
@@ -234,10 +233,10 @@ class MainActivity : AppCompatActivity() {
             var panorama: Bitmap? = null
 
             if (status == Stitcher.OK) {
-                Log.i("STITCHER", "Success")
+                Log.i("STITCHER", "Success (2)")
                 panorama = matToBitmap(panoramaMat)
             } else {
-                Log.i("STITCHER", "Failed")
+                Log.i("STITCHER", "Failed (2)")
             }
 
             runOnUiThread {
@@ -254,11 +253,19 @@ class MainActivity : AppCompatActivity() {
         Log.i("STITCHER", "Has OpenCL: ${haveOpenCL()}")
         Log.i("STITCHER", "Use OpenCL: ${useOpenCL()}")
 
-        loadImages(true) { images ->
-            makePanorama(images, PANORAMA_MODE_PLANE) { panorama ->
+        loadImages(false) { images ->
+            makePanorama(images, PANORAMA_MODE_CYLINDRICAL) { panorama ->
                 mBinding.imageView.setImageBitmap(panorama)
             }
         }
+
+        /*
+        loadImages2(false) { images ->
+            makePanorama2(images, PANORAMA_MODE_CYLINDRICAL) { panorama ->
+                mBinding.imageView.setImageBitmap(panorama)
+            }
+        }
+         */
     }
 
     private fun measureTime(msg: String, l: ()->Unit) {
