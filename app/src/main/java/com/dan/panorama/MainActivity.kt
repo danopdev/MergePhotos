@@ -1,12 +1,14 @@
 package com.dan.panorama
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
@@ -73,6 +75,68 @@ class MainActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
         return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when(item.itemId) {
+            R.id.loadImages -> {
+                startActivityToOpenImages()
+                return true
+            }
+
+            R.id.savePanorama -> {
+                return true
+            }
+        }
+
+        return super.onOptionsItemSelected(item)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (resultCode == RESULT_OK && requestCode == INTENT_OPEN_IMAGES) {
+            imagesClear()
+            BusyDialog.show(supportFragmentManager)
+
+            GlobalScope.launch(Dispatchers.IO) {
+                data?.clipData?.let { clipData ->
+                    var count = clipData.itemCount
+
+                    for (i in 0 until count) {
+                        try {
+                            contentResolver.openInputStream(clipData.getItemAt(i).uri)?.let { inputStream ->
+                                BitmapFactory.decodeStream( inputStream )?.let{ bitmap ->
+                                    imageAppend(bitmap)
+                                }
+                            }
+                        } catch (e: Exception) {
+                        }
+                    }
+                }
+
+                runOnUiThread {
+                    BusyDialog.dismiss()
+                    if (mImages.size() < 2) {
+                        imagesClear()
+                        Toast.makeText(applicationContext, "You must select at least 2 images", Toast.LENGTH_LONG).show()
+                    } else {
+                        makePanoramaSmall()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startActivityToOpenImages() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+            .putExtra("android.content.extra.SHOW_ADVANCED", true)
+            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+            .putExtra(Intent.EXTRA_TITLE, "Select images")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("image/*")
+        startActivityForResult(intent, INTENT_OPEN_IMAGES)
     }
 
     private fun exitApp() {
@@ -145,12 +209,14 @@ class MainActivity : AppCompatActivity() {
         else exitApp()
     }
 
+    private fun imagesClear() {
+        mImages.clear()
+        mImagesSmall.clear()
+    }
 
-    private fun loadImage(path: String): Pair<Mat, Mat> {
-        val img = imread(path)
-        if (img.empty()) return Pair(img, img)
-
-        Log.i("STITCHER", "Load OK: $path")
+    private fun imageAppend(bitmap: Bitmap) {
+        val img = bitmapToMat(bitmap)
+        if (img.empty()) return
 
         var widthSmall: Int
         var heightSmall: Int
@@ -165,29 +231,9 @@ class MainActivity : AppCompatActivity() {
 
         val imgSmall = Mat()
         resize(img, imgSmall, Size(widthSmall, heightSmall))
-        return Pair(img.clone(), imgSmall)
-    }
 
-    private fun loadImages(l: ()->Unit) {
-        BusyDialog.show(supportFragmentManager)
-
-        mImages.clear()
-        mImagesSmall.clear()
-
-        GlobalScope.launch(Dispatchers.IO) {
-            for (i in 1..5) {
-                val both = loadImage("/storage/emulated/0/Panorama/$i.jpg")
-                if (!both.first.empty() && !both.second.empty()) {
-                    mImages.push_back(both.first)
-                    mImagesSmall.push_back(both.second)
-                }
-            }
-
-            runOnUiThread {
-                BusyDialog.dismiss()
-                l.invoke()
-            }
-        }
+        mImages.push_back(img.clone())
+        mImagesSmall.push_back(imgSmall)
     }
 
     private fun makePanorama( images: MatVector, l: (panorama: Bitmap?)->Unit ) {
@@ -260,10 +306,6 @@ class MainActivity : AppCompatActivity() {
 
             override fun onNothingSelected(parent: AdapterView<*>) {
             }
-        }
-
-        loadImages() {
-            makePanoramaSmall()
         }
     }
 }
