@@ -181,6 +181,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setBitamp(bitamp: Bitmap?) {
+        if (null != bitamp) {
+            mBinding.imageView.setImageBitmap(bitamp)
+        } else {
+            mBinding.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
+        }
+
+        mBinding.imageView.resetZoom()
+    }
+
     private fun onPermissionsAllowed() {
         setContentView(mBinding.root)
 
@@ -188,7 +198,7 @@ class MainActivity : AppCompatActivity() {
 
         loadImages(true) { images ->
             makePanorama(images, PANORAMA_MODE_CYLINDRICAL) { panorama ->
-                mBinding.imageView.setImageBitmap(panorama)
+                setBitamp(panorama)
             }
         }
     }
