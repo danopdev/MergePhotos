@@ -251,7 +251,8 @@ class MainActivity : AppCompatActivity() {
         val imgSmall = Mat()
         resize(img, imgSmall, Size(widthSmall, heightSmall))
 
-        mImages.push_back(img.clone())
+        img.addref()
+        mImages.push_back(img)
         mImagesSmall.push_back(imgSmall)
     }
 
@@ -296,6 +297,7 @@ class MainActivity : AppCompatActivity() {
     private fun makePanoramaSmall() {
         makePanorama(mImagesSmall) { panorama ->
             setBitmap(matToBitmap(panorama))
+            panorama.release()
         }
     }
 
@@ -320,6 +322,7 @@ class MainActivity : AppCompatActivity() {
                 showToast("Failed to save panorama")
             }
 
+            panorama.release()
             BusyDialog.dismiss()
         }
     }
