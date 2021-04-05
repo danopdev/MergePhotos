@@ -31,7 +31,10 @@ class BusyDialog: DialogFragment() {
 
         fun dismiss() {
             activity.runOnUiThread {
-                currentDialog?.dismiss()
+                try {
+                    currentDialog?.dismiss()
+                } catch (e: Exception) {
+                }
                 currentDialog = null
             }
         }
