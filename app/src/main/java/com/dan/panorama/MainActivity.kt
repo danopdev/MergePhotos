@@ -181,7 +181,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadImage2(path: String, small: Boolean): UMat {
+    private fun loadImage2_(path: String, small: Boolean): UMat {
         val img = imread(path)
         if (img.empty()) return UMat()
 
@@ -193,6 +193,15 @@ class MainActivity : AppCompatActivity() {
         val imgSmall = Mat()
         resize(img, imgSmall, Size(widthSmall, heightSmall))
         return imgSmall.getUMat(ACCESS_FAST)
+    }
+
+    private fun loadImage2(path: String, small: Boolean): UMat {
+        val umat = UMat()
+        val mat = loadImage(path, small)
+        if (!mat.empty()) {
+            mat.copyTo(umat)
+        }
+        return umat;
     }
 
     private fun loadImages2( small: Boolean, l: (images: UMatVector)->Unit) {
