@@ -282,9 +282,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setBitmap(bitamp: Bitmap?) {
-        if (null != bitamp) {
-            mBinding.imageView.setImageBitmap(bitamp)
+    private fun setBitmap(bitmap: Bitmap?) {
+        if (null != bitmap) {
+            mBinding.imageView.setImageBitmap(bitmap)
         } else {
             mBinding.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
         }
