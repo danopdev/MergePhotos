@@ -101,6 +101,11 @@ class MainActivity : AppCompatActivity() {
 
                     for (i in 0 until count) {
                         try {
+                            val documentFile = DocumentFile.fromTreeUri(applicationContext, clipData.getItemAt(i).uri)
+                            if (null != documentFile) {
+                                Log.i("STITCHER", "Loading: ${documentFile.name}")
+                            }
+
                             if (0 == i) {
                                 DocumentFile.fromTreeUri(applicationContext, clipData.getItemAt(i).uri)?.name?.let { name ->
                                     if (name.length > 0) mOutputName = name
@@ -133,8 +138,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showToast(message: String) {
+        Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
+    }
+
     private fun showNotEnoughImagesToast() {
-        Toast.makeText(applicationContext, "You must select at least 2 images", Toast.LENGTH_LONG).show()
+        showToast("You must select at least 2 images")
     }
 
     private fun startActivityToOpenImages() {
@@ -296,16 +305,20 @@ class MainActivity : AppCompatActivity() {
             BusyDialog.show(supportFragmentManager, "Saving")
 
             try {
-                var filePath = Settings.SAVE_FOLDER + "/" + mOutputName + ".png"
+                var fileName = mOutputName + ".png"
+                var fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                 var counter = 0
-                while (File(filePath).exists() && counter < 998) {
+                while (File(fileFullPath).exists() && counter < 998) {
                     counter++
-                    filePath = Settings.SAVE_FOLDER + "/" + mOutputName + "_%03d".format(counter) + ".png"
+                    fileName = mOutputName + "_%03d".format(counter) + ".png"
+                    fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                 }
 
-                File(filePath).parentFile?.mkdirs()
-                imwrite(filePath, panorama)
+                File(fileFullPath).parentFile?.mkdirs()
+                imwrite(fileFullPath, panorama)
+                showToast("Saved to: ${fileName}")
             } catch (e: Exception) {
+                showToast("Failed to save panorama")
             }
 
             BusyDialog.dismiss()
@@ -316,6 +329,7 @@ class MainActivity : AppCompatActivity() {
         if (null != bitmap) {
             mBinding.imageView.setImageBitmap(bitmap)
         } else {
+            showToast("Failed to create panorama")
             mBinding.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
         }
 
