@@ -14,8 +14,18 @@ class Settings( private val activity: Activity) {
 
     companion object {
         const val SAVE_FOLDER = "/storage/emulated/0/Panorama"
-        const val SAVE_QUALITY = 100
+
+        const val IMG_SIZE_SMALL = 512
+
+        const val TMP_FILE_NAME = "tmp.png"
+        const val PANORAMA_DEFAULT_NAME = "panorama"
+
+        const val PANORAMA_MODE_PLANE = 0
+        const val PANORAMA_MODE_CYLINDRICAL = 1
+        const val PANORAMA_MODE_SPHERICAL = 2
     }
+
+    var panoramaMode: Int = PANORAMA_MODE_CYLINDRICAL
 
     init {
         loadProperties()

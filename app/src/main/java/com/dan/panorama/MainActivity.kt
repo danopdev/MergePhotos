@@ -41,22 +41,13 @@ class MainActivity : AppCompatActivity() {
 
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_OPEN_IMAGES = 2
-
-        const val IMG_SIZE_SMALL = 512
-
-        const val PANORAMA_MODE_PLANE = 0
-        const val PANORAMA_MODE_CYLINDRICAL = 1
-        const val PANORAMA_MODE_SPHERICAL = 2
-
-        const val TMP_FILE_NAME = "tmp.png"
-        const val PANORAMA_DEFAULT_NAME = "panorama"
-        const val OUTPUT_FOLDER = "/storage/emulated/0/Panorama"
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
+    private val mSettings: Settings by lazy { Settings(this) }
     private val mImages = MatVector()
     private val mImagesSmall = MatVector()
-    private var mOutputName = PANORAMA_DEFAULT_NAME
+    private var mOutputName = Settings.PANORAMA_DEFAULT_NAME
 
     init {
         BusyDialog.create(this)
@@ -101,7 +92,7 @@ class MainActivity : AppCompatActivity() {
 
         if (resultCode == RESULT_OK && requestCode == INTENT_OPEN_IMAGES) {
             imagesClear()
-            mOutputName = PANORAMA_DEFAULT_NAME
+            mOutputName = Settings.PANORAMA_DEFAULT_NAME
             BusyDialog.show(supportFragmentManager, "Loading images")
 
             GlobalScope.launch(Dispatchers.IO) {
@@ -164,7 +155,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun matToBitmap(mat: Mat): Bitmap? {
         var bitmap: Bitmap? = null
-        val tmpFile = File(cacheDir, TMP_FILE_NAME)
+        val tmpFile = File(cacheDir, Settings.TMP_FILE_NAME)
         val tmpAbsolutePath = tmpFile.absolutePath
 
         if (mat.empty()) return null
@@ -185,7 +176,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun bitmapToMat(bitmap: Bitmap): Mat {
         var mat: Mat? = null
-        val tmpFile = File(cacheDir, TMP_FILE_NAME)
+        val tmpFile = File(cacheDir, Settings.TMP_FILE_NAME)
         val tmpAbsolutePath = tmpFile.absolutePath
 
         try {
@@ -242,11 +233,11 @@ class MainActivity : AppCompatActivity() {
         var heightSmall: Int
 
         if (img.rows() < img.cols()) {
-            widthSmall = IMG_SIZE_SMALL
-            heightSmall = IMG_SIZE_SMALL * img.rows() / img.cols()
+            widthSmall = Settings.IMG_SIZE_SMALL
+            heightSmall = Settings.IMG_SIZE_SMALL * img.rows() / img.cols()
         } else {
-            widthSmall = IMG_SIZE_SMALL * img.cols() / img.rows()
-            heightSmall = IMG_SIZE_SMALL
+            widthSmall = Settings.IMG_SIZE_SMALL * img.cols() / img.rows()
+            heightSmall = Settings.IMG_SIZE_SMALL
         }
 
         val imgSmall = Mat()
@@ -273,8 +264,8 @@ class MainActivity : AppCompatActivity() {
             val stitcher = Stitcher.create(Stitcher.PANORAMA)
 
             when(projection) {
-                PANORAMA_MODE_CYLINDRICAL -> stitcher.setWarper(CylindricalWarper())
-                PANORAMA_MODE_SPHERICAL -> stitcher.setWarper(SphericalWarper())
+                Settings.PANORAMA_MODE_CYLINDRICAL -> stitcher.setWarper(CylindricalWarper())
+                Settings.PANORAMA_MODE_SPHERICAL -> stitcher.setWarper(SphericalWarper())
                 else -> stitcher.setWarper(PlaneWarper())
             }
 
@@ -305,11 +296,11 @@ class MainActivity : AppCompatActivity() {
             BusyDialog.show(supportFragmentManager, "Saving")
 
             try {
-                var filePath = OUTPUT_FOLDER + "/" + mOutputName + ".png"
+                var filePath = Settings.SAVE_FOLDER + "/" + mOutputName + ".png"
                 var counter = 0
                 while (File(filePath).exists() && counter < 998) {
                     counter++
-                    filePath = OUTPUT_FOLDER + "/" + mOutputName + "_%03d".format(counter) + ".png"
+                    filePath = Settings.SAVE_FOLDER + "/" + mOutputName + "_%03d".format(counter) + ".png"
                 }
 
                 File(filePath).parentFile?.mkdirs()
@@ -332,15 +323,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onPermissionsAllowed() {
+        setUseOpenCL(false)
         setContentView(mBinding.root)
 
-        setUseOpenCL(false)
+        try {
+            mBinding.spinnerProjection.setSelection(mSettings.panoramaMode)
+        } catch (e: Exception) {
+        }
 
         mBinding.spinnerProjection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
                 if (mImages.size() >= 2) {
                     makePanoramaSmall()
                 }
+
+                mSettings.panoramaMode = mBinding.spinnerProjection.selectedItemPosition
+                mSettings.saveProperties()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
