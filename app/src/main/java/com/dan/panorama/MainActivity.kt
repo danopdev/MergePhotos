@@ -181,81 +181,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadImage2_(path: String, small: Boolean): UMat {
-        val img = imread(path)
-        if (img.empty()) return UMat()
-
-        Log.i("STITCHER", "Load (2) OK: $path")
-        if (!small) return img.clone().getUMat(ACCESS_FAST)
-
-        val widthSmall = IMG_WORK_SIZE
-        val heightSmall = IMG_WORK_SIZE * img.rows() / img.cols()
-        val imgSmall = Mat()
-        resize(img, imgSmall, Size(widthSmall, heightSmall))
-        return imgSmall.getUMat(ACCESS_FAST)
-    }
-
-    private fun loadImage2(path: String, small: Boolean): UMat {
-        val umat = UMat()
-        val mat = loadImage(path, small)
-        if (!mat.empty()) {
-            mat.copyTo(umat)
-        }
-        return umat;
-    }
-
-    private fun loadImages2( small: Boolean, l: (images: UMatVector)->Unit) {
-        BusyDialog.show(supportFragmentManager)
-
-        GlobalScope.launch(Dispatchers.IO) {
-            val images = UMatVector()
-            for (i in 1..5) {
-                val img = loadImage2("/storage/emulated/0/Panorama/$i.jpg", small)
-                if (!img.empty()) {
-                    images.push_back(img)
-                }
-            }
-
-            runOnUiThread {
-                BusyDialog.dismiss()
-                l.invoke(images)
-            }
-        }
-    }
-
-    private fun makePanorama2( images: UMatVector, mode: Int, l: (panorama: Bitmap?)->Unit ) {
-        BusyDialog.show(supportFragmentManager)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        GlobalScope.launch(Dispatchers.IO) {
-            Log.i("STITCHER", "Start (2)")
-            val panoramaMat = UMat()
-            val stitcher = Stitcher.create(Stitcher.PANORAMA)
-
-            when(mode) {
-                PANORAMA_MODE_CYLINDRICAL -> stitcher.setWarper(CylindricalWarper())
-                PANORAMA_MODE_SPHERICAL -> stitcher.setWarper(SphericalWarper())
-                else -> stitcher.setWarper(PlaneWarper())
-            }
-
-            val status = stitcher.stitch(images, panoramaMat)
-            var panorama: Bitmap? = null
-
-            if (status == Stitcher.OK) {
-                Log.i("STITCHER", "Success (2)")
-                panorama = matToBitmap(panoramaMat)
-            } else {
-                Log.i("STITCHER", "Failed (2)")
-            }
-
-            runOnUiThread {
-                BusyDialog.dismiss()
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                l.invoke(panorama)
-            }
-        }
-    }
-
     private fun onPermissionsAllowed() {
         setContentView(mBinding.root)
 
@@ -267,14 +192,6 @@ class MainActivity : AppCompatActivity() {
                 mBinding.imageView.setImageBitmap(panorama)
             }
         }
-
-        /*
-        loadImages2(false) { images ->
-            makePanorama2(images, PANORAMA_MODE_CYLINDRICAL) { panorama ->
-                mBinding.imageView.setImageBitmap(panorama)
-            }
-        }
-         */
     }
 
     private fun measureTime(msg: String, l: ()->Unit) {
