@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Panorama</string>
+    <string-array name="projections">
+        <item>Plane</item>
+        <item>Cylindrical</item>
+        <item>Spherical</item>
+    </string-array>
 </resources>

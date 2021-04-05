@@ -6,7 +6,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.WindowManager
+import android.widget.AdapterView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -61,6 +64,7 @@ class MainActivity : AppCompatActivity() {
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val mImages = MatVector()
+    private val mImagesSmall = MatVector()
 
     init {
         BusyDialog.create(this)
@@ -116,12 +120,11 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun loadImage(path: String, small: Boolean): Mat {
+    private fun loadImage(path: String): Pair<Mat, Mat> {
         val img = imread(path)
-        if (img.empty()) return img
+        if (img.empty()) return Pair(img, img)
 
         Log.i("STITCHER", "Load OK: $path")
-        if (!small) return img.clone()
 
         var widthSmall: Int
         var heightSmall: Int
@@ -136,39 +139,48 @@ class MainActivity : AppCompatActivity() {
 
         val imgSmall = Mat()
         resize(img, imgSmall, Size(widthSmall, heightSmall))
-        return imgSmall
+        return Pair(img.clone(), imgSmall)
     }
 
-    private fun loadImages( small: Boolean, l: (images: MatVector)->Unit) {
+    private fun loadImages(l: ()->Unit) {
         BusyDialog.show(supportFragmentManager)
 
         mImages.clear()
+        mImagesSmall.clear()
 
         GlobalScope.launch(Dispatchers.IO) {
             for (i in 1..5) {
-                val img = loadImage("/storage/emulated/0/Panorama/$i.jpg", small)
-                if (!img.empty()) {
-                    mImages.push_back(img)
+                val both = loadImage("/storage/emulated/0/Panorama/$i.jpg")
+                if (!both.first.empty() && !both.second.empty()) {
+                    mImages.push_back(both.first)
+                    mImagesSmall.push_back(both.second)
                 }
             }
 
             runOnUiThread {
                 BusyDialog.dismiss()
-                l.invoke(mImages)
+                l.invoke()
             }
         }
     }
 
-    private fun makePanorama( images: MatVector, mode: Int, l: (panorama: Bitmap?)->Unit ) {
+    private fun makePanorama( images: MatVector, l: (panorama: Bitmap?)->Unit ) {
+        if (images.size() <= 1) {
+            Toast.makeText(applicationContext, "You must have minimum 2 images !", Toast.LENGTH_LONG).show()
+            l.invoke(null)
+            return
+        }
+
         BusyDialog.show(supportFragmentManager)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        val projection = mBinding.spinnerProjection.selectedItemPosition
 
         GlobalScope.launch(Dispatchers.IO) {
             Log.i("STITCHER", "Start")
             val panoramaMat = Mat()
             val stitcher = Stitcher.create(Stitcher.PANORAMA)
 
-            when(mode) {
+            when(projection) {
                 PANORAMA_MODE_CYLINDRICAL -> stitcher.setWarper(CylindricalWarper())
                 PANORAMA_MODE_SPHERICAL -> stitcher.setWarper(SphericalWarper())
                 else -> stitcher.setWarper(PlaneWarper())
@@ -192,6 +204,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun makePanoramaSmall() {
+        makePanorama(mImagesSmall) { panorama ->
+            setBitamp(panorama)
+        }
+    }
+
     private fun setBitamp(bitamp: Bitmap?) {
         if (null != bitamp) {
             mBinding.imageView.setImageBitmap(bitamp)
@@ -207,10 +225,19 @@ class MainActivity : AppCompatActivity() {
 
         setUseOpenCL(false)
 
-        loadImages(true) { images ->
-            makePanorama(images, PANORAMA_MODE_CYLINDRICAL) { panorama ->
-                setBitamp(panorama)
+        mBinding.spinnerProjection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                if (mImages.size() >= 2) {
+                    makePanoramaSmall()
+                }
             }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {
+            }
+        }
+
+        loadImages() {
+            makePanoramaSmall()
         }
     }
 
