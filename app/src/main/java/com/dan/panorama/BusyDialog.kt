@@ -22,10 +22,13 @@ class BusyDialog: DialogFragment() {
 
         fun show(supportFragmentManager: FragmentManager) {
             if (null == currentDialog) {
-                val dialog = BusyDialog()
-                dialog.isCancelable = false
-                dialog.show(supportFragmentManager, FRAGMENT_TAG)
-                currentDialog = dialog
+                try {
+                    val dialog = BusyDialog()
+                    dialog.isCancelable = false
+                    dialog.show(supportFragmentManager, FRAGMENT_TAG)
+                    currentDialog = dialog
+                } catch (e: Exception) {
+                }
             }
         }
 
