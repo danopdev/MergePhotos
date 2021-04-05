@@ -278,11 +278,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun makePanoramaSmall() {
         makePanorama(mImagesSmall) { panorama ->
-            setBitamp(panorama)
+            setBitmap(panorama)
         }
     }
 
-    private fun setBitamp(bitamp: Bitmap?) {
+    private fun setBitmap(bitamp: Bitmap?) {
         if (null != bitamp) {
             mBinding.imageView.setImageBitmap(bitamp)
         } else {
