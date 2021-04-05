@@ -119,13 +119,17 @@ class MainActivity : AppCompatActivity() {
                     BusyDialog.dismiss()
                     if (mImages.size() < 2) {
                         imagesClear()
-                        Toast.makeText(applicationContext, "You must select at least 2 images", Toast.LENGTH_LONG).show()
+                        showNotEnoughImagesToast()
                     } else {
                         makePanoramaSmall()
                     }
                 }
             }
         }
+    }
+
+    private fun showNotEnoughImagesToast() {
+        Toast.makeText(applicationContext, "You must select at least 2 images", Toast.LENGTH_LONG).show()
     }
 
     private fun startActivityToOpenImages() {
@@ -238,7 +242,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun makePanorama( images: MatVector, l: (panorama: Bitmap?)->Unit ) {
         if (images.size() <= 1) {
-            Toast.makeText(applicationContext, "You must have minimum 2 images !", Toast.LENGTH_LONG).show()
+            showNotEnoughImagesToast()
             l.invoke(null)
             return
         }
