@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             mOutputName = Settings.PANORAMA_DEFAULT_NAME
             BusyDialog.show(supportFragmentManager, "Loading images")
 
-            GlobalScope.launch(Dispatchers.IO) {
+            //GlobalScope.launch(Dispatchers.IO) {
                 data?.clipData?.let { clipData ->
                     var count = clipData.itemCount
 
@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                runOnUiThread {
+                //runOnUiThread {
                     if (mImages.size() < 2) {
                         imagesClear()
                         showNotEnoughImagesToast()
@@ -132,8 +132,8 @@ class MainActivity : AppCompatActivity() {
                         makePanoramaSmall()
                     }
                     BusyDialog.dismiss()
-                }
-            }
+                //}
+            //}
         }
     }
 
@@ -267,7 +267,7 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val projection = mBinding.spinnerProjection.selectedItemPosition
 
-        GlobalScope.launch(Dispatchers.IO) {
+        //GlobalScope.launch(Dispatchers.IO) {
             Log.i("STITCHER", "Start")
             val panorama = Mat()
             val stitcher = Stitcher.create(Stitcher.PANORAMA)
@@ -286,12 +286,12 @@ class MainActivity : AppCompatActivity() {
                 Log.i("STITCHER", "Failed")
             }
 
-            runOnUiThread {
+            //runOnUiThread {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 l.invoke(panorama)
                 BusyDialog.dismiss()
-            }
-        }
+            //}
+        //}
     }
 
     private fun makePanoramaSmall() {
