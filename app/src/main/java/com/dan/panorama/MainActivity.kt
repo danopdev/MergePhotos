@@ -49,8 +49,8 @@ class MainActivity : AppCompatActivity() {
         const val PANORAMA_MODE_SPHERICAL = 2
 
         const val TMP_FILE_NAME = "tmp.png"
-
         const val PANORAMA_DEFAULT_NAME = "panorama"
+        const val OUTPUT_FOLDER = "/storage/emulated/0/Panorama"
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
@@ -88,6 +88,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.savePanorama -> {
+                makePanoramaBig()
                 return true
             }
         }
@@ -101,7 +102,7 @@ class MainActivity : AppCompatActivity() {
         if (resultCode == RESULT_OK && requestCode == INTENT_OPEN_IMAGES) {
             imagesClear()
             mOutputName = PANORAMA_DEFAULT_NAME
-            BusyDialog.show(supportFragmentManager)
+            BusyDialog.show(supportFragmentManager, "Loading images")
 
             GlobalScope.launch(Dispatchers.IO) {
                 data?.clipData?.let { clipData ->
@@ -129,13 +130,13 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 runOnUiThread {
-                    BusyDialog.dismiss()
                     if (mImages.size() < 2) {
                         imagesClear()
                         showNotEnoughImagesToast()
                     } else {
                         makePanoramaSmall()
                     }
+                    BusyDialog.dismiss()
                 }
             }
         }
@@ -165,6 +166,8 @@ class MainActivity : AppCompatActivity() {
         var bitmap: Bitmap? = null
         val tmpFile = File(cacheDir, TMP_FILE_NAME)
         val tmpAbsolutePath = tmpFile.absolutePath
+
+        if (mat.empty()) return null
 
         try {
             imwrite(tmpAbsolutePath, mat)
@@ -253,20 +256,20 @@ class MainActivity : AppCompatActivity() {
         mImagesSmall.push_back(imgSmall)
     }
 
-    private fun makePanorama( images: MatVector, l: (panorama: Bitmap?)->Unit ) {
+    private fun makePanorama( images: MatVector, l: (panorama: Mat)->Unit ) {
         if (images.size() <= 1) {
             showNotEnoughImagesToast()
-            l.invoke(null)
+            l.invoke(Mat())
             return
         }
 
-        BusyDialog.show(supportFragmentManager)
+        BusyDialog.show(supportFragmentManager, "Stitching")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val projection = mBinding.spinnerProjection.selectedItemPosition
 
         GlobalScope.launch(Dispatchers.IO) {
             Log.i("STITCHER", "Start")
-            val panoramaMat = Mat()
+            val panorama = Mat()
             val stitcher = Stitcher.create(Stitcher.PANORAMA)
 
             when(projection) {
@@ -275,27 +278,46 @@ class MainActivity : AppCompatActivity() {
                 else -> stitcher.setWarper(PlaneWarper())
             }
 
-            val status = stitcher.stitch(images, panoramaMat)
-            var panorama: Bitmap? = null
+            val status = stitcher.stitch(images, panorama)
 
             if (status == Stitcher.OK) {
                 Log.i("STITCHER", "Success")
-                panorama = matToBitmap(panoramaMat)
             } else {
                 Log.i("STITCHER", "Failed")
             }
 
             runOnUiThread {
-                BusyDialog.dismiss()
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 l.invoke(panorama)
+                BusyDialog.dismiss()
             }
         }
     }
 
     private fun makePanoramaSmall() {
         makePanorama(mImagesSmall) { panorama ->
-            setBitmap(panorama)
+            setBitmap(matToBitmap(panorama))
+        }
+    }
+
+    private fun makePanoramaBig() {
+        makePanorama(mImages) { panorama ->
+            BusyDialog.show(supportFragmentManager, "Saving")
+
+            try {
+                var filePath = OUTPUT_FOLDER + "/" + mOutputName + ".png"
+                var counter = 0
+                while (File(filePath).exists() && counter < 998) {
+                    counter++
+                    filePath = OUTPUT_FOLDER + "/" + mOutputName + "_%03d".format(counter) + ".png"
+                }
+
+                File(filePath).parentFile?.mkdirs()
+                imwrite(filePath, panorama)
+            } catch (e: Exception) {
+            }
+
+            BusyDialog.dismiss()
         }
     }
 
