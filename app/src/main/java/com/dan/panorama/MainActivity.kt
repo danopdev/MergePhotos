@@ -187,6 +187,8 @@ class MainActivity : AppCompatActivity() {
         Log.i("STITCHER", "Has OpenCL: ${haveOpenCL()}")
         Log.i("STITCHER", "Use OpenCL: ${useOpenCL()}")
 
+        setUseOpenCL(false)
+
         loadImages(false) { images ->
             makePanorama(images, PANORAMA_MODE_CYLINDRICAL) { panorama ->
                 mBinding.imageView.setImageBitmap(panorama)
