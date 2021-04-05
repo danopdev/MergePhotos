@@ -44,22 +44,8 @@ class MainActivity : AppCompatActivity() {
         const val PANORAMA_MODE_CYLINDRICAL = 1
         const val PANORAMA_MODE_SPHERICAL = 2
 
-        const val TMP_FILE = "/storage/emulated/0/Panorama/tmp.png"
+        const val TMP_FILE_NAME = "tmp.png"
 
-        fun matToBitmap(mat: Mat): Bitmap? {
-            imwrite(TMP_FILE, mat)
-            return BitmapFactory.decodeFile(TMP_FILE)
-        }
-
-        fun matToBitmap(mat: UMat): Bitmap? {
-            imwrite(TMP_FILE, mat)
-            return BitmapFactory.decodeFile(TMP_FILE)
-        }
-
-        fun bitmapToMat(bitmap: Bitmap): Mat {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, File(TMP_FILE).outputStream())
-            return imread(TMP_FILE)
-        }
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
@@ -90,6 +76,44 @@ class MainActivity : AppCompatActivity() {
     private fun exitApp() {
         setResult(0)
         finish()
+    }
+
+    private fun matToBitmap(mat: Mat): Bitmap? {
+        var bitmap: Bitmap? = null
+        val tmpFile = File(cacheDir, TMP_FILE_NAME)
+        val tmpAbsolutePath = tmpFile.absolutePath
+
+        try {
+            imwrite(tmpAbsolutePath, mat)
+            bitmap = BitmapFactory.decodeFile(tmpAbsolutePath)
+        } catch (e: Exception) {
+        }
+
+        try {
+            tmpFile.delete()
+        } catch (e: Exception) {
+        }
+
+        return bitmap
+    }
+
+    private fun bitmapToMat(bitmap: Bitmap): Mat {
+        var mat: Mat? = null
+        val tmpFile = File(cacheDir, TMP_FILE_NAME)
+        val tmpAbsolutePath = tmpFile.absolutePath
+
+        try {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, tmpFile.outputStream())
+            mat = imread(tmpAbsolutePath)
+        } catch (e: Exception) {
+        }
+
+        try {
+            tmpFile.delete()
+        } catch (e: Exception) {
+        }
+
+        return mat ?: Mat()
     }
 
     private fun askPermissions(): Boolean {
