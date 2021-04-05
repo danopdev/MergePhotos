@@ -101,14 +101,13 @@ class MainActivity : AppCompatActivity() {
 
                     for (i in 0 until count) {
                         try {
-                            val documentFile = DocumentFile.fromTreeUri(applicationContext, clipData.getItemAt(i).uri)
-                            if (null != documentFile) {
-                                Log.i("STITCHER", "Loading: ${documentFile.name}")
-                            }
-
                             if (0 == i) {
-                                DocumentFile.fromTreeUri(applicationContext, clipData.getItemAt(i).uri)?.name?.let { name ->
-                                    if (name.length > 0) mOutputName = name
+                                DocumentFile.fromSingleUri(applicationContext, clipData.getItemAt(i).uri)?.name?.let { name ->
+                                    if (name.length > 0) {
+                                        val fields = name.split('.')
+                                        mOutputName = fields[0] + "_panorama"
+                                        Log.i("STITCHER","Output name: ${mOutputName}")
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
