@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_OPEN_IMAGES = 2
 
-        const val IMG_WORK_SIZE = 512
+        const val IMG_SIZE_SMALL = 512
 
         const val PANORAMA_MODE_PLANE = 0
         const val PANORAMA_MODE_CYLINDRICAL = 1
@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
+    private val mImages = MatVector()
 
     init {
         BusyDialog.create(this)
@@ -122,8 +123,17 @@ class MainActivity : AppCompatActivity() {
         Log.i("STITCHER", "Load OK: $path")
         if (!small) return img.clone()
 
-        val widthSmall = IMG_WORK_SIZE
-        val heightSmall = IMG_WORK_SIZE * img.rows() / img.cols()
+        var widthSmall: Int
+        var heightSmall: Int
+
+        if (img.rows() < img.cols()) {
+            widthSmall = IMG_SIZE_SMALL
+            heightSmall = IMG_SIZE_SMALL * img.rows() / img.cols()
+        } else {
+            widthSmall = IMG_SIZE_SMALL * img.cols() / img.rows()
+            heightSmall = IMG_SIZE_SMALL
+        }
+
         val imgSmall = Mat()
         resize(img, imgSmall, Size(widthSmall, heightSmall))
         return imgSmall
@@ -132,18 +142,19 @@ class MainActivity : AppCompatActivity() {
     private fun loadImages( small: Boolean, l: (images: MatVector)->Unit) {
         BusyDialog.show(supportFragmentManager)
 
+        mImages.clear()
+
         GlobalScope.launch(Dispatchers.IO) {
-            val images = MatVector()
             for (i in 1..5) {
                 val img = loadImage("/storage/emulated/0/Panorama/$i.jpg", small)
                 if (!img.empty()) {
-                    images.push_back(img)
+                    mImages.push_back(img)
                 }
             }
 
             runOnUiThread {
                 BusyDialog.dismiss()
-                l.invoke(images)
+                l.invoke(mImages)
             }
         }
     }
