@@ -184,12 +184,9 @@ class MainActivity : AppCompatActivity() {
     private fun onPermissionsAllowed() {
         setContentView(mBinding.root)
 
-        Log.i("STITCHER", "Has OpenCL: ${haveOpenCL()}")
-        Log.i("STITCHER", "Use OpenCL: ${useOpenCL()}")
-
         setUseOpenCL(false)
 
-        loadImages(false) { images ->
+        loadImages(true) { images ->
             makePanorama(images, PANORAMA_MODE_CYLINDRICAL) { panorama ->
                 mBinding.imageView.setImageBitmap(panorama)
             }
