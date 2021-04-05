@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/loadImages"
+        android:icon="@android:drawable/ic_menu_gallery"
+        android:title="Load Images"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/savePanorama"
+        android:icon="@android:drawable/ic_menu_save"
+        android:title="Save Panorama"
+        app:showAsAction="always" />
+</menu>
