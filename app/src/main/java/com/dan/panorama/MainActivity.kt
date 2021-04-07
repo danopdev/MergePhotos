@@ -1,11 +1,13 @@
 package com.dan.panorama
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -321,6 +323,13 @@ class MainActivity : AppCompatActivity() {
                 File(fileFullPath).parentFile?.mkdirs()
                 imwrite(fileFullPath, panorama)
                 showToast("Saved to: ${fileName}")
+
+                //Add the panorama to gallery
+                val values = ContentValues()
+                @Suppress("DEPRECATION")
+                values.put(MediaStore.Images.Media.DATA, fileFullPath)
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
             } catch (e: Exception) {
                 showToast("Failed to save panorama")
             }
