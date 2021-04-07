@@ -18,9 +18,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.dan.panorama.databinding.ActivityMainBinding
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.bytedeco.opencv.global.opencv_core.*
 import org.bytedeco.opencv.global.opencv_imgcodecs.*
 import org.bytedeco.opencv.global.opencv_imgproc.resize
@@ -30,6 +27,7 @@ import org.bytedeco.opencv.opencv_stitching.SphericalWarper
 import org.bytedeco.opencv.opencv_stitching.PlaneWarper
 import org.bytedeco.opencv.opencv_stitching.Stitcher
 import java.io.File
+import kotlin.concurrent.timer
 
 
 class MainActivity : AppCompatActivity() {
@@ -95,7 +93,7 @@ class MainActivity : AppCompatActivity() {
             mOutputName = Settings.PANORAMA_DEFAULT_NAME
             BusyDialog.show(supportFragmentManager, "Loading images")
 
-            //GlobalScope.launch(Dispatchers.IO) {
+            runFakeAsync {
                 data?.clipData?.let { clipData ->
                     var count = clipData.itemCount
 
@@ -124,16 +122,23 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                //runOnUiThread {
-                    if (mImages.size() < 2) {
-                        imagesClear()
-                        showNotEnoughImagesToast()
-                    } else {
-                        makePanoramaSmall()
-                    }
-                    BusyDialog.dismiss()
-                //}
-            //}
+                if (mImages.size() < 2) {
+                    imagesClear()
+                    showNotEnoughImagesToast()
+                } else {
+                    makePanoramaSmall()
+                }
+                BusyDialog.dismiss()
+            }
+        }
+    }
+
+    private fun runFakeAsync(l: ()->Unit) {
+        timer(null, false, 500, 500) {
+            this.cancel()
+            runOnUiThread {
+                l.invoke()
+            }
         }
     }
 
@@ -267,7 +272,7 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val projection = mBinding.spinnerProjection.selectedItemPosition
 
-        //GlobalScope.launch(Dispatchers.IO) {
+        runFakeAsync {
             Log.i("STITCHER", "Start")
             val panorama = Mat()
             val stitcher = Stitcher.create(Stitcher.PANORAMA)
@@ -286,12 +291,10 @@ class MainActivity : AppCompatActivity() {
                 Log.i("STITCHER", "Failed")
             }
 
-            //runOnUiThread {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                l.invoke(panorama)
-                BusyDialog.dismiss()
-            //}
-        //}
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            l.invoke(panorama)
+            BusyDialog.dismiss()
+        }
     }
 
     private fun makePanoramaSmall() {
