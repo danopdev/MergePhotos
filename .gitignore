@@ -15,3 +15,5 @@
 local.properties
 /app/keystore.config
 /.idea/vcs.xml
+/app/release/output-metadata.json
+/app/release/app-release.apk
