@@ -17,7 +17,6 @@ class Settings( private val activity: Activity) {
 
         const val IMG_SIZE_SMALL = 512
 
-        const val TMP_FILE_NAME = "tmp.png"
         const val PANORAMA_DEFAULT_NAME = "panorama"
 
         const val PANORAMA_MODE_PLANE = 0

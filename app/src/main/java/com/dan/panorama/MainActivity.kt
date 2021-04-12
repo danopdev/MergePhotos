@@ -20,14 +20,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.dan.panorama.databinding.ActivityMainBinding
-import org.bytedeco.opencv.global.opencv_core.*
-import org.bytedeco.opencv.global.opencv_imgcodecs.*
-import org.bytedeco.opencv.global.opencv_imgproc.resize
-import org.bytedeco.opencv.opencv_core.*
-import org.bytedeco.opencv.opencv_stitching.CylindricalWarper
-import org.bytedeco.opencv.opencv_stitching.SphericalWarper
-import org.bytedeco.opencv.opencv_stitching.PlaneWarper
-import org.bytedeco.opencv.opencv_stitching.Stitcher
 import java.io.File
 import kotlin.concurrent.timer
 
@@ -45,8 +37,8 @@ class MainActivity : AppCompatActivity() {
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val mSettings: Settings by lazy { Settings(this) }
-    private val mImages = MatVector()
-    private val mImagesSmall = MatVector()
+    //private val mImages = MatVector()
+    //private val mImagesSmall = MatVector()
     private var mOutputName = Settings.PANORAMA_DEFAULT_NAME
 
     init {
@@ -124,12 +116,15 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                /*
                 if (mImages.size() < 2) {
                     imagesClear()
                     showNotEnoughImagesToast()
                 } else {
                     makePanoramaSmall()
                 }
+
+                 */
                 BusyDialog.dismiss()
             }
         }
@@ -168,46 +163,6 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun matToBitmap(mat: Mat): Bitmap? {
-        var bitmap: Bitmap? = null
-        val tmpFile = File(cacheDir, Settings.TMP_FILE_NAME)
-        val tmpAbsolutePath = tmpFile.absolutePath
-
-        if (mat.empty()) return null
-
-        try {
-            imwrite(tmpAbsolutePath, mat)
-            bitmap = BitmapFactory.decodeFile(tmpAbsolutePath)
-        } catch (e: Exception) {
-        }
-
-        try {
-            tmpFile.delete()
-        } catch (e: Exception) {
-        }
-
-        return bitmap
-    }
-
-    private fun bitmapToMat(bitmap: Bitmap): Mat {
-        var mat: Mat? = null
-        val tmpFile = File(cacheDir, Settings.TMP_FILE_NAME)
-        val tmpAbsolutePath = tmpFile.absolutePath
-
-        try {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, tmpFile.outputStream())
-            mat = imread(tmpAbsolutePath)
-        } catch (e: Exception) {
-        }
-
-        try {
-            tmpFile.delete()
-        } catch (e: Exception) {
-        }
-
-        return mat ?: Mat()
-    }
-
     private fun askPermissions(): Boolean {
         for (permission in PERMISSIONS) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -236,11 +191,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun imagesClear() {
-        mImages.clear()
-        mImagesSmall.clear()
+        //mImages.clear()
+        //mImagesSmall.clear()
     }
 
     private fun imageAppend(bitmap: Bitmap) {
+        /*
         val img = bitmapToMat(bitmap)
         if (img.empty()) return
 
@@ -261,8 +217,10 @@ class MainActivity : AppCompatActivity() {
         img.addref()
         mImages.push_back(img)
         mImagesSmall.push_back(imgSmall)
+         */
     }
 
+    /*
     private fun makePanorama( images: MatVector, l: (panorama: Mat)->Unit ) {
         if (images.size() <= 1) {
             showNotEnoughImagesToast()
@@ -299,14 +257,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+     */
+
     private fun makePanoramaSmall() {
+        /*
         makePanorama(mImagesSmall) { panorama ->
             setBitmap(matToBitmap(panorama))
             panorama.release()
         }
+
+         */
     }
 
     private fun makePanoramaBig() {
+        /*
         makePanorama(mImages) { panorama ->
             BusyDialog.show(supportFragmentManager, "Saving")
 
@@ -337,6 +301,8 @@ class MainActivity : AppCompatActivity() {
             panorama.release()
             BusyDialog.dismiss()
         }
+
+         */
     }
 
     private fun setBitmap(bitmap: Bitmap?) {
@@ -351,7 +317,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onPermissionsAllowed() {
-        setUseOpenCL(false)
+        //setUseOpenCL(false)
         setContentView(mBinding.root)
 
         try {
@@ -361,9 +327,9 @@ class MainActivity : AppCompatActivity() {
 
         mBinding.spinnerProjection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
-                if (mImages.size() >= 2) {
-                    makePanoramaSmall()
-                }
+                //if (mImages.size() >= 2) {
+                //    makePanoramaSmall()
+                //}
 
                 mSettings.panoramaMode = mBinding.spinnerProjection.selectedItemPosition
                 mSettings.saveProperties()
