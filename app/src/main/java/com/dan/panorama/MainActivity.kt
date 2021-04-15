@@ -15,11 +15,20 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.dan.panorama.databinding.ActivityMainBinding
+import org.opencv.android.OpenCVLoader
+import org.opencv.android.Utils
+import org.opencv.core.Mat
+import org.opencv.core.Size
+import org.opencv.imgcodecs.Imgcodecs.imwrite
+import org.opencv.imgproc.Imgproc
+import org.opencv.imgproc.Imgproc.resize
+import org.opencv.utils.Converters
 import java.io.File
 import kotlin.concurrent.timer
 
@@ -33,12 +42,23 @@ class MainActivity : AppCompatActivity() {
 
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_OPEN_IMAGES = 2
+
+        //const val PROJECTION_PLANE = 0
+        //const val PROJECTION_CYLINDRICAL = 1
+        //const val PROJECTION_SPHERICAL = 2
+
+        fun makePanorama(images: List<Mat>, panorama: Mat, projection: Int): Boolean {
+            val images_mat = Converters.vector_Mat_to_Mat(images)
+            return makePanoramaNative(images_mat.nativeObj, panorama.nativeObj, projection)
+        }
+
+        external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val mSettings: Settings by lazy { Settings(this) }
-    //private val mImages = MatVector()
-    //private val mImagesSmall = MatVector()
+    private val mImages = mutableListOf<Mat>()
+    private val mImagesSmall = mutableListOf<Mat>()
     private var mOutputName = Settings.PANORAMA_DEFAULT_NAME
 
     init {
@@ -98,7 +118,7 @@ class MainActivity : AppCompatActivity() {
                                     if (name.length > 0) {
                                         val fields = name.split('.')
                                         mOutputName = fields[0] + "_panorama"
-                                        Log.i("STITCHER","Output name: ${mOutputName}")
+                                        Log.i("STITCHER", "Output name: ${mOutputName}")
                                     }
                                 }
                             }
@@ -107,7 +127,7 @@ class MainActivity : AppCompatActivity() {
 
                         try {
                             contentResolver.openInputStream(clipData.getItemAt(i).uri)?.let { inputStream ->
-                                BitmapFactory.decodeStream( inputStream )?.let{ bitmap ->
+                                BitmapFactory.decodeStream(inputStream)?.let{ bitmap ->
                                     imageAppend(bitmap)
                                 }
                             }
@@ -116,21 +136,19 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                /*
-                if (mImages.size() < 2) {
+                if (mImages.size < 2) {
                     imagesClear()
                     showNotEnoughImagesToast()
                 } else {
                     makePanoramaSmall()
                 }
 
-                 */
-                BusyDialog.dismiss()
+               BusyDialog.dismiss()
             }
         }
     }
 
-    private fun runFakeAsync(l: ()->Unit) {
+    private fun runFakeAsync(l: () -> Unit) {
         timer(null, false, 500, 500) {
             this.cancel()
             runOnUiThread {
@@ -163,6 +181,16 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
+    private fun fatalError(msg: String) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.app_name))
+            .setMessage(msg)
+            .setIcon(android.R.drawable.stat_notify_error)
+            .setCancelable(false)
+            .setPositiveButton("OK") { _, _ -> exitApp() }
+            .show()
+    }
+
     private fun askPermissions(): Boolean {
         for (permission in PERMISSIONS) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -187,17 +215,26 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (allowedAll) onPermissionsAllowed()
-        else exitApp()
+        else fatalError("You must allow permissions !")
     }
 
     private fun imagesClear() {
-        //mImages.clear()
-        //mImagesSmall.clear()
+        mImages.clear()
+        mImagesSmall.clear()
+    }
+
+    private fun bitmapToMat(bitmap: Bitmap): Mat {
+        val imgRGBA = Mat()
+        Utils.bitmapToMat(bitmap, imgRGBA)
+        if (imgRGBA.empty()) return imgRGBA
+        val img = Mat()
+        Imgproc.cvtColor(imgRGBA, img, Imgproc.COLOR_BGRA2BGR)
+        return img
     }
 
     private fun imageAppend(bitmap: Bitmap) {
-        /*
         val img = bitmapToMat(bitmap)
+        Log.i("STITCHER", "Load OK")
         if (img.empty()) return
 
         var widthSmall: Int
@@ -212,17 +249,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         val imgSmall = Mat()
-        resize(img, imgSmall, Size(widthSmall, heightSmall))
+        resize(img, imgSmall, Size(widthSmall.toDouble(), heightSmall.toDouble()))
 
-        img.addref()
-        mImages.push_back(img)
-        mImagesSmall.push_back(imgSmall)
-         */
+        mImages.add(img)
+        mImagesSmall.add(imgSmall)
     }
 
-    /*
-    private fun makePanorama( images: MatVector, l: (panorama: Mat)->Unit ) {
-        if (images.size() <= 1) {
+    private fun makePanorama(images: MutableList<Mat>, l: (panorama: Mat) -> Unit) {
+        if (images.size <= 1) {
             showNotEnoughImagesToast()
             l.invoke(Mat())
             return
@@ -233,19 +267,10 @@ class MainActivity : AppCompatActivity() {
         val projection = mBinding.spinnerProjection.selectedItemPosition
 
         runFakeAsync {
-            Log.i("STITCHER", "Start")
             val panorama = Mat()
-            val stitcher = Stitcher.create(Stitcher.PANORAMA)
+            Log.i("STITCHER", "Start")
 
-            when(projection) {
-                Settings.PANORAMA_MODE_CYLINDRICAL -> stitcher.setWarper(CylindricalWarper())
-                Settings.PANORAMA_MODE_SPHERICAL -> stitcher.setWarper(SphericalWarper())
-                else -> stitcher.setWarper(PlaneWarper())
-            }
-
-            val status = stitcher.stitch(images, panorama)
-
-            if (status == Stitcher.OK) {
+            if (Companion.makePanorama(images.toList(), panorama, projection)) {
                 Log.i("STITCHER", "Success")
             } else {
                 Log.i("STITCHER", "Failed")
@@ -257,20 +282,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-     */
-
     private fun makePanoramaSmall() {
-        /*
         makePanorama(mImagesSmall) { panorama ->
-            setBitmap(matToBitmap(panorama))
-            panorama.release()
+            if (panorama.empty()) {
+                setBitmap(null)
+            } else {
+                val bitmap = Bitmap.createBitmap(panorama.cols(), panorama.rows(), Bitmap.Config.ARGB_8888)
+                Utils.matToBitmap(panorama, bitmap)
+                setBitmap(bitmap)
+            }
         }
-
-         */
     }
 
     private fun makePanoramaBig() {
-        /*
         makePanorama(mImages) { panorama ->
             BusyDialog.show(supportFragmentManager, "Saving")
 
@@ -284,8 +308,11 @@ class MainActivity : AppCompatActivity() {
                     fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                 }
 
+                var panoramaRGB = Mat()
+                Imgproc.cvtColor(panorama, panoramaRGB, Imgproc.COLOR_BGR2RGB)
+
                 File(fileFullPath).parentFile?.mkdirs()
-                imwrite(fileFullPath, panorama)
+                imwrite(fileFullPath, panoramaRGB)
                 showToast("Saved to: ${fileName}")
 
                 //Add the panorama to gallery
@@ -301,8 +328,6 @@ class MainActivity : AppCompatActivity() {
             panorama.release()
             BusyDialog.dismiss()
         }
-
-         */
     }
 
     private fun setBitmap(bitmap: Bitmap?) {
@@ -317,7 +342,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onPermissionsAllowed() {
-        //setUseOpenCL(false)
+        if (!OpenCVLoader.initDebug()) fatalError("Failed to initialize OpenCV")
+        System.loadLibrary("native-lib")
+
         setContentView(mBinding.root)
 
         try {
@@ -327,9 +354,9 @@ class MainActivity : AppCompatActivity() {
 
         mBinding.spinnerProjection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
-                //if (mImages.size() >= 2) {
-                //    makePanoramaSmall()
-                //}
+                if (mImages.size >= 2) {
+                    makePanoramaSmall()
+                }
 
                 mSettings.panoramaMode = mBinding.spinnerProjection.selectedItemPosition
                 mSettings.saveProperties()

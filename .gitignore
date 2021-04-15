@@ -17,3 +17,4 @@ local.properties
 /.idea/vcs.xml
 /app/release/output-metadata.json
 /app/release/app-release.apk
+/opencv/build
