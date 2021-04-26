@@ -378,5 +378,16 @@ class MainActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>) {
             }
         }
+
+        mBinding.spinnerMergeMode.onItemSelectedListener = object  : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                if (mImages.size >= 2) {
+                    mergePhotosSmall()
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {
+            }
+        }
     }
 }
