@@ -17,7 +17,7 @@ class Settings( private val activity: Activity) {
 
         const val IMG_SIZE_SMALL = 512
 
-        const val PANORAMA_DEFAULT_NAME = "panorama"
+        const val DEFAULT_NAME = "output"
 
         const val PANORAMA_MODE_PLANE = 0
         const val PANORAMA_MODE_CYLINDRICAL = 1

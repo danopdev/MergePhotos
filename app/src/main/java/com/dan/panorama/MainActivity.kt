@@ -43,6 +43,10 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_OPEN_IMAGES = 2
 
+        const val MERGE_MODE_PANORAMA = 0
+        const val MERGE_MODE_LONG_EXPOSURE = 1
+        const val MERGE_MODE_HDR = 2
+
         //const val PROJECTION_PLANE = 0
         //const val PROJECTION_CYLINDRICAL = 1
         //const val PROJECTION_SPHERICAL = 2
@@ -59,7 +63,7 @@ class MainActivity : AppCompatActivity() {
     private val mSettings: Settings by lazy { Settings(this) }
     private val mImages = mutableListOf<Mat>()
     private val mImagesSmall = mutableListOf<Mat>()
-    private var mOutputName = Settings.PANORAMA_DEFAULT_NAME
+    private var mOutputName = Settings.DEFAULT_NAME
 
     init {
         BusyDialog.create(this)
@@ -91,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.savePanorama -> {
-                makePanoramaBig()
+                mergePhotosBig()
                 return true
             }
         }
@@ -104,7 +108,7 @@ class MainActivity : AppCompatActivity() {
 
         if (resultCode == RESULT_OK && requestCode == INTENT_OPEN_IMAGES) {
             imagesClear()
-            mOutputName = Settings.PANORAMA_DEFAULT_NAME
+            mOutputName = Settings.DEFAULT_NAME
             BusyDialog.show(supportFragmentManager, "Loading images")
 
             runFakeAsync {
@@ -117,7 +121,7 @@ class MainActivity : AppCompatActivity() {
                                 DocumentFile.fromSingleUri(applicationContext, clipData.getItemAt(i).uri)?.name?.let { name ->
                                     if (name.length > 0) {
                                         val fields = name.split('.')
-                                        mOutputName = fields[0] + "_panorama"
+                                        mOutputName = fields[0]
                                         Log.i("STITCHER", "Output name: ${mOutputName}")
                                     }
                                 }
@@ -140,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                     imagesClear()
                     showNotEnoughImagesToast()
                 } else {
-                    makePanoramaSmall()
+                    mergePhotosSmall()
                 }
 
                BusyDialog.dismiss()
@@ -255,61 +259,72 @@ class MainActivity : AppCompatActivity() {
         mImagesSmall.add(imgSmall)
     }
 
-    private fun makePanorama(images: MutableList<Mat>, l: (panorama: Mat) -> Unit) {
+    private fun makePanorama(images: MutableList<Mat>, output: Mat, projection: Int) {
+        Log.i("STITCHER", "Panorama: Start")
+
+        if (Companion.makePanorama(images.toList(), output, projection)) {
+            Log.i("STITCHER", "Panorama: Success")
+        } else {
+            Log.i("STITCHER", "Panorama: Failed")
+        }
+    }
+
+    private fun mergePhotos(images: MutableList<Mat>, l: (output: Mat, name: String) -> Unit) {
         if (images.size <= 1) {
             showNotEnoughImagesToast()
-            l.invoke(Mat())
+            l.invoke(Mat(), "")
             return
         }
 
-        BusyDialog.show(supportFragmentManager, "Stitching")
+        BusyDialog.show(supportFragmentManager, "Merging photos ...")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        val projection = mBinding.spinnerProjection.selectedItemPosition
+        val mergeMode = mBinding.spinnerMergeMode.selectedItemPosition
+        val panoramaProjection = mBinding.spinnerProjection.selectedItemPosition
 
         runFakeAsync {
-            val panorama = Mat()
-            Log.i("STITCHER", "Start")
-
-            if (Companion.makePanorama(images.toList(), panorama, projection)) {
-                Log.i("STITCHER", "Success")
-            } else {
-                Log.i("STITCHER", "Failed")
+            val output = Mat()
+            var name = ""
+            when(mergeMode) {
+                MERGE_MODE_PANORAMA -> {
+                    makePanorama(images, output, panoramaProjection)
+                    name = "panorama"
+                }
             }
-
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            l.invoke(panorama)
+            l.invoke(output, name)
             BusyDialog.dismiss()
         }
     }
 
-    private fun makePanoramaSmall() {
-        makePanorama(mImagesSmall) { panorama ->
-            if (panorama.empty()) {
+    private fun mergePhotosSmall() {
+        mergePhotos(mImagesSmall) { output, _ ->
+            if (output.empty()) {
                 setBitmap(null)
             } else {
-                val bitmap = Bitmap.createBitmap(panorama.cols(), panorama.rows(), Bitmap.Config.ARGB_8888)
-                Utils.matToBitmap(panorama, bitmap)
+                val bitmap = Bitmap.createBitmap(output.cols(), output.rows(), Bitmap.Config.ARGB_8888)
+                Utils.matToBitmap(output, bitmap)
                 setBitmap(bitmap)
             }
         }
     }
 
-    private fun makePanoramaBig() {
-        makePanorama(mImages) { panorama ->
+    private fun mergePhotosBig() {
+        mergePhotos(mImages) { output, name ->
             BusyDialog.show(supportFragmentManager, "Saving")
 
             try {
-                var fileName = mOutputName + ".png"
+                var fileName = "${mOutputName}_${name}.png"
                 var fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                 var counter = 0
                 while (File(fileFullPath).exists() && counter < 998) {
                     counter++
-                    fileName = mOutputName + "_%03d".format(counter) + ".png"
+                    val counterStr = "_%03d".format(counter)
+                    fileName = "${mOutputName}_${name}_${counterStr}.png"
                     fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                 }
 
                 var panoramaRGB = Mat()
-                Imgproc.cvtColor(panorama, panoramaRGB, Imgproc.COLOR_BGR2RGB)
+                Imgproc.cvtColor(output, panoramaRGB, Imgproc.COLOR_BGR2RGB)
 
                 File(fileFullPath).parentFile?.mkdirs()
                 imwrite(fileFullPath, panoramaRGB)
@@ -324,8 +339,6 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 showToast("Failed to save panorama")
             }
-
-            panorama.release()
             BusyDialog.dismiss()
         }
     }
@@ -355,7 +368,7 @@ class MainActivity : AppCompatActivity() {
         mBinding.spinnerProjection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
                 if (mImages.size >= 2) {
-                    makePanoramaSmall()
+                    mergePhotosSmall()
                 }
 
                 mSettings.panoramaMode = mBinding.spinnerProjection.selectedItemPosition
