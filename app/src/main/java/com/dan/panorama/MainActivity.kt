@@ -24,11 +24,16 @@ import androidx.documentfile.provider.DocumentFile
 import com.dan.panorama.databinding.ActivityMainBinding
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
-import org.opencv.core.Mat
-import org.opencv.core.Size
+import org.opencv.calib3d.Calib3d.RANSAC
+import org.opencv.calib3d.Calib3d.findHomography
+import org.opencv.core.*
+import org.opencv.core.Core.NORM_HAMMING
+import org.opencv.features2d.BFMatcher
+import org.opencv.features2d.ORB
 import org.opencv.imgcodecs.Imgcodecs.imwrite
 import org.opencv.imgproc.Imgproc
 import org.opencv.imgproc.Imgproc.resize
+import org.opencv.imgproc.Imgproc.warpPerspective
 import org.opencv.utils.Converters
 import java.io.File
 import kotlin.concurrent.timer
@@ -256,14 +261,80 @@ class MainActivity : AppCompatActivity() {
         mImagesSmall.add(imgSmall)
     }
 
-    private fun makePanorama(images: MutableList<Mat>, output: Mat, projection: Int) {
+    private fun mergePanorama(images: MutableList<Mat>, output: Mat, projection: Int) {
         Log.i("STITCHER", "Panorama: Start")
+        makePanorama(images.toList(), output, projection)
+        Log.i("STITCHER", "Panorama: ${ if (output.empty()) "Success" else "Failed" }")
+    }
 
-        if (Companion.makePanorama(images.toList(), output, projection)) {
-            Log.i("STITCHER", "Panorama: Success")
-        } else {
-            Log.i("STITCHER", "Panorama: Failed")
+    private fun toGrayImage(image: Mat): Mat {
+        val grayMat = Mat()
+        Imgproc.cvtColor(grayMat, image, Imgproc.COLOR_BGR2GRAY)
+        return grayMat
+    }
+
+    private fun orbDetectAndCompute( orbDetector: ORB, image: Mat): Pair<MutableList<KeyPoint>, Mat> {
+        val grayImage = toGrayImage(image)
+        val keyPoints = MatOfKeyPoint()
+        val descriptors = Mat()
+        orbDetector.detectAndCompute(grayImage, null, keyPoints, descriptors)
+        return Pair(keyPoints.toList(), descriptors)
+    }
+
+    private fun alignImages(images: MutableList<Mat>): MutableList<Mat> {
+        Log.i("STITCHER", "Align: Start")
+
+        val alignedImages = mutableListOf<Mat>()
+        alignedImages.add(images[0])
+
+        val orbDetector = ORB.create(1000)
+        val matcher = BFMatcher.create(NORM_HAMMING, true)
+        val refInfo = orbDetectAndCompute(orbDetector, images[0])
+        val refKeyPoints = refInfo.first
+        val refDescriptors = refInfo.second
+
+        for (imageIndex in 1 until images.size) {
+            val info = orbDetectAndCompute(orbDetector, images[0])
+            val keyPoints = info.first
+            val descriptors = info.second
+
+            val matches = MatOfDMatch()
+            matcher.match(descriptors, refDescriptors, matches)
+            val listMatches = matches.toList().sortedBy { it.distance }
+            val usedSize = listMatches.size * 80 / 100
+            if (usedSize < 2) continue
+
+            val listPoints = mutableListOf<Point>()
+            val listRefPoints = mutableListOf<Point>()
+            for (matchIndex in 0 until usedSize) {
+                val queryIdx = listMatches[matchIndex].queryIdx
+                val trainIdx = listMatches[matchIndex].trainIdx
+                listPoints.add(keyPoints[queryIdx].pt)
+                listRefPoints.add(refKeyPoints[trainIdx].pt)
+            }
+
+            val matListPoints = MatOfPoint2f()
+            matListPoints.fromList(listPoints)
+
+            val matListRefPoints = MatOfPoint2f()
+            matListRefPoints.fromList(listRefPoints)
+
+            val homography = findHomography( matListPoints, matListRefPoints, RANSAC )
+            val alignedImage = Mat()
+            warpPerspective(images[imageIndex], alignedImage, homography, Size(images[imageIndex].cols().toDouble(), images[imageIndex].rows().toDouble()))
+            if (alignedImage.empty()) continue
+
+            alignedImages.add(alignedImage)
         }
+
+        Log.i("STITCHER", "Align: End")
+        return alignedImages
+    }
+
+    private fun mergeLongExposure(images: MutableList<Mat>, output: Mat) {
+        Log.i("STITCHER", "Long Exposure: Start")
+
+        Log.i("STITCHER", "Long Exposure: ${ if (output.empty()) "Success" else "Failed" }")
     }
 
     private fun mergePhotos(images: MutableList<Mat>, l: (output: Mat, name: String) -> Unit) {
@@ -283,8 +354,13 @@ class MainActivity : AppCompatActivity() {
             var name = ""
             when(mergeMode) {
                 MERGE_MODE_PANORAMA -> {
-                    makePanorama(images, output, panoramaProjection)
+                    mergePanorama(images, output, panoramaProjection)
                     name = "panorama"
+                }
+
+                MERGE_MODE_LONG_EXPOSURE -> {
+                    mergeLongExposure(images, output)
+                    name = "longexposure"
                 }
             }
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
