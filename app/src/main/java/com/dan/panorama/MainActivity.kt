@@ -34,6 +34,7 @@ import org.opencv.features2d.ORB
 import org.opencv.imgcodecs.Imgcodecs.imwrite
 import org.opencv.imgproc.Imgproc
 import org.opencv.imgproc.Imgproc.*
+import org.opencv.photo.Photo.createMergeMertens
 import org.opencv.utils.Converters
 import java.io.File
 import kotlin.concurrent.timer
@@ -268,7 +269,7 @@ class MainActivity : AppCompatActivity() {
     private fun mergePanorama(images: MutableList<Mat>, output: Mat, projection: Int) {
         log("Panorama: Start")
         makePanorama(images.toList(), output, projection)
-        log("Panorama: ${ if (output.empty()) "Success" else "Failed" }")
+        log("Panorama: ${ if (output.empty()) "Failed" else "Success" }")
     }
 
     private fun toGrayImage(image: Mat): Mat {
@@ -353,7 +354,25 @@ class MainActivity : AppCompatActivity() {
             floatMat.convertTo(output, CV_8UC3)
         }
 
-        log("Long Exposure: ${ if (output.empty()) "Success" else "Failed" }")
+        log("Long Exposure: ${ if (output.empty()) "Failed" else "Success" }")
+    }
+
+    private fun mergeHdr(images: MutableList<Mat>, output: Mat) {
+        log("HDR: Start")
+
+        val alignedImages = alignImages(images)
+        if (alignedImages.size >= 2) {
+            val hdrMat = Mat()
+            val mergeMertens = createMergeMertens()
+            mergeMertens.process(alignedImages, hdrMat)
+
+            if (!hdrMat.empty()) {
+                Core.multiply(hdrMat, Scalar(255.0, 255.0,255.0), hdrMat)
+                hdrMat.convertTo(output, CV_8UC3)
+            }
+        }
+
+        log("HDR Exposure: ${ if (output.empty()) "Failed" else "Success" }")
     }
 
     private fun mergePhotos(images: MutableList<Mat>, l: (output: Mat, name: String) -> Unit) {
@@ -380,6 +399,11 @@ class MainActivity : AppCompatActivity() {
                 MERGE_MODE_LONG_EXPOSURE -> {
                     mergeLongExposure(images, output)
                     name = "longexposure"
+                }
+
+                MERGE_MODE_HDR -> {
+                    mergeHdr(images, output)
+                    name = "hdr"
                 }
             }
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
