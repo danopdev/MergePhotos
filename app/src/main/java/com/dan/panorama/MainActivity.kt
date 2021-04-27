@@ -28,8 +28,7 @@ import org.opencv.calib3d.Calib3d.RANSAC
 import org.opencv.calib3d.Calib3d.findHomography
 import org.opencv.core.*
 import org.opencv.core.Core.NORM_HAMMING
-import org.opencv.core.CvType.CV_32FC3
-import org.opencv.core.CvType.CV_8UC3
+import org.opencv.core.CvType.*
 import org.opencv.features2d.BFMatcher
 import org.opencv.features2d.ORB
 import org.opencv.imgcodecs.Imgcodecs.imwrite
@@ -274,7 +273,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun toGrayImage(image: Mat): Mat {
         val grayMat = Mat()
-        Imgproc.cvtColor(grayMat, image, Imgproc.COLOR_BGR2GRAY)
+        cvtColor(image, grayMat, COLOR_BGR2GRAY)
         return grayMat
     }
 
@@ -282,7 +281,7 @@ class MainActivity : AppCompatActivity() {
         val grayImage = toGrayImage(image)
         val keyPoints = MatOfKeyPoint()
         val descriptors = Mat()
-        orbDetector.detectAndCompute(grayImage, null, keyPoints, descriptors)
+        orbDetector.detectAndCompute(grayImage, Mat(), keyPoints, descriptors)
         return Pair(keyPoints.toList(), descriptors)
     }
 
@@ -292,14 +291,14 @@ class MainActivity : AppCompatActivity() {
         val alignedImages = mutableListOf<Mat>()
         alignedImages.add(images[0])
 
-        val orbDetector = ORB.create(1000)
+        val orbDetector = ORB.create(5000)
         val matcher = BFMatcher.create(NORM_HAMMING, true)
         val refInfo = orbDetectAndCompute(orbDetector, images[0])
         val refKeyPoints = refInfo.first
         val refDescriptors = refInfo.second
 
         for (imageIndex in 1 until images.size) {
-            val info = orbDetectAndCompute(orbDetector, images[0])
+            val info = orbDetectAndCompute(orbDetector, images[imageIndex])
             val keyPoints = info.first
             val descriptors = info.second
 
@@ -345,10 +344,11 @@ class MainActivity : AppCompatActivity() {
             alignedImages[0].convertTo(floatMat, CV_32FC3)
 
             for (imageIndex in 1 until images.size) {
-                Core.add(floatMat, alignedImages[imageIndex], floatMat)
+                Core.add(floatMat, alignedImages[imageIndex], floatMat, Mat(), CV_32FC3)
             }
 
-            Core.divide(1.0 / alignedImages.size.toDouble(), floatMat, floatMat)
+            val multiplyValue = 1.0 / alignedImages.size.toDouble()
+            Core.multiply(floatMat, Scalar(multiplyValue, multiplyValue,multiplyValue), floatMat)
 
             floatMat.convertTo(output, CV_8UC3)
         }
@@ -410,7 +410,7 @@ class MainActivity : AppCompatActivity() {
                 var counter = 0
                 while (File(fileFullPath).exists() && counter < 998) {
                     counter++
-                    val counterStr = "_%03d".format(counter)
+                    val counterStr = "%03d".format(counter)
                     fileName = "${mOutputName}_${name}_${counterStr}.png"
                     fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                 }
