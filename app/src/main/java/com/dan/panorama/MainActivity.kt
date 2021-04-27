@@ -19,6 +19,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.documentfile.provider.DocumentFile
 import com.dan.panorama.databinding.ActivityMainBinding
 import org.opencv.android.OpenCVLoader
@@ -113,7 +114,7 @@ class MainActivity : AppCompatActivity() {
 
             runFakeAsync {
                 data?.clipData?.let { clipData ->
-                    var count = clipData.itemCount
+                    val count = clipData.itemCount
 
                     for (i in 0 until count) {
                         try {
@@ -241,8 +242,8 @@ class MainActivity : AppCompatActivity() {
         Log.i("STITCHER", "Load OK")
         if (img.empty()) return
 
-        var widthSmall: Int
-        var heightSmall: Int
+        val widthSmall: Int
+        val heightSmall: Int
 
         if (img.rows() < img.cols()) {
             widthSmall = Settings.IMG_SIZE_SMALL
@@ -323,7 +324,7 @@ class MainActivity : AppCompatActivity() {
                     fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                 }
 
-                var panoramaRGB = Mat()
+                val panoramaRGB = Mat()
                 Imgproc.cvtColor(output, panoramaRGB, Imgproc.COLOR_BGR2RGB)
 
                 File(fileFullPath).parentFile?.mkdirs()
@@ -354,6 +355,10 @@ class MainActivity : AppCompatActivity() {
         mBinding.imageView.resetZoom()
     }
 
+    private fun showMergeModeParams() {
+        mBinding.paramsProjection.isVisible = MERGE_MODE_PANORAMA == mBinding.spinnerMergeMode.selectedItemPosition
+    }
+
     private fun onPermissionsAllowed() {
         if (!OpenCVLoader.initDebug()) fatalError("Failed to initialize OpenCV")
         System.loadLibrary("native-lib")
@@ -364,6 +369,8 @@ class MainActivity : AppCompatActivity() {
             mBinding.spinnerProjection.setSelection(mSettings.panoramaMode)
         } catch (e: Exception) {
         }
+
+        showMergeModeParams()
 
         mBinding.spinnerProjection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
@@ -381,6 +388,8 @@ class MainActivity : AppCompatActivity() {
 
         mBinding.spinnerMergeMode.onItemSelectedListener = object  : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                showMergeModeParams()
+
                 if (mImages.size >= 2) {
                     mergePhotosSmall()
                 }
