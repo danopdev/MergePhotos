@@ -48,10 +48,6 @@ class MainActivity : AppCompatActivity() {
         const val MERGE_MODE_LONG_EXPOSURE = 1
         const val MERGE_MODE_HDR = 2
 
-        //const val PROJECTION_PLANE = 0
-        //const val PROJECTION_CYLINDRICAL = 1
-        //const val PROJECTION_SPHERICAL = 2
-
         fun makePanorama(images: List<Mat>, panorama: Mat, projection: Int): Boolean {
             val images_mat = Converters.vector_Mat_to_Mat(images)
             return makePanoramaNative(images_mat.nativeObj, panorama.nativeObj, projection)
