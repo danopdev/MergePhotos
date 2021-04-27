@@ -28,12 +28,13 @@ import org.opencv.calib3d.Calib3d.RANSAC
 import org.opencv.calib3d.Calib3d.findHomography
 import org.opencv.core.*
 import org.opencv.core.Core.NORM_HAMMING
+import org.opencv.core.CvType.CV_32FC3
+import org.opencv.core.CvType.CV_8UC3
 import org.opencv.features2d.BFMatcher
 import org.opencv.features2d.ORB
 import org.opencv.imgcodecs.Imgcodecs.imwrite
 import org.opencv.imgproc.Imgproc
-import org.opencv.imgproc.Imgproc.resize
-import org.opencv.imgproc.Imgproc.warpPerspective
+import org.opencv.imgproc.Imgproc.*
 import org.opencv.utils.Converters
 import java.io.File
 import kotlin.concurrent.timer
@@ -337,6 +338,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun mergeLongExposure(images: MutableList<Mat>, output: Mat) {
         log("Long Exposure: Start")
+
+        val alignedImages = alignImages(images)
+        if (alignedImages.size >= 2) {
+            val floatMat = Mat()
+            alignedImages[0].convertTo(floatMat, CV_32FC3)
+
+            for (imageIndex in 1 until images.size) {
+                Core.add(floatMat, alignedImages[imageIndex], floatMat)
+            }
+
+            Core.divide(1.0 / alignedImages.size.toDouble(), floatMat, floatMat)
+
+            floatMat.convertTo(output, CV_8UC3)
+        }
 
         log("Long Exposure: ${ if (output.empty()) "Success" else "Failed" }")
     }
