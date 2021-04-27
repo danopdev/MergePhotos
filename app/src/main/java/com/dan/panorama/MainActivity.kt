@@ -53,6 +53,10 @@ class MainActivity : AppCompatActivity() {
         const val MERGE_MODE_LONG_EXPOSURE = 1
         const val MERGE_MODE_HDR = 2
 
+        private fun log(msg: String) {
+            Log.i("MERGE", msg)
+        }
+
         fun makePanorama(images: List<Mat>, panorama: Mat, projection: Int): Boolean {
             val images_mat = Converters.vector_Mat_to_Mat(images)
             return makePanoramaNative(images_mat.nativeObj, panorama.nativeObj, projection)
@@ -124,7 +128,7 @@ class MainActivity : AppCompatActivity() {
                                     if (name.length > 0) {
                                         val fields = name.split('.')
                                         mOutputName = fields[0]
-                                        Log.i("STITCHER", "Output name: ${mOutputName}")
+                                        log("Output name: ${mOutputName}")
                                     }
                                 }
                             }
@@ -240,7 +244,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun imageAppend(bitmap: Bitmap) {
         val img = bitmapToMat(bitmap)
-        Log.i("STITCHER", "Load OK")
+        log("Load OK")
         if (img.empty()) return
 
         val widthSmall: Int
@@ -262,9 +266,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mergePanorama(images: MutableList<Mat>, output: Mat, projection: Int) {
-        Log.i("STITCHER", "Panorama: Start")
+        log("Panorama: Start")
         makePanorama(images.toList(), output, projection)
-        Log.i("STITCHER", "Panorama: ${ if (output.empty()) "Success" else "Failed" }")
+        log("Panorama: ${ if (output.empty()) "Success" else "Failed" }")
     }
 
     private fun toGrayImage(image: Mat): Mat {
@@ -282,7 +286,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun alignImages(images: MutableList<Mat>): MutableList<Mat> {
-        Log.i("STITCHER", "Align: Start")
+        log("Align: Start")
 
         val alignedImages = mutableListOf<Mat>()
         alignedImages.add(images[0])
@@ -327,14 +331,14 @@ class MainActivity : AppCompatActivity() {
             alignedImages.add(alignedImage)
         }
 
-        Log.i("STITCHER", "Align: End")
+        log("Align: End")
         return alignedImages
     }
 
     private fun mergeLongExposure(images: MutableList<Mat>, output: Mat) {
-        Log.i("STITCHER", "Long Exposure: Start")
+        log("Long Exposure: Start")
 
-        Log.i("STITCHER", "Long Exposure: ${ if (output.empty()) "Success" else "Failed" }")
+        log("Long Exposure: ${ if (output.empty()) "Success" else "Failed" }")
     }
 
     private fun mergePhotos(images: MutableList<Mat>, l: (output: Mat, name: String) -> Unit) {
