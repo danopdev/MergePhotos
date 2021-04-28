@@ -6,13 +6,16 @@ plugins {
 android {
     signingConfigs {
         'default' {
-            Properties keystoreProps = new Properties()
-            keystoreProps.load(new FileInputStream(file('keystore.config')))
+            File keystoreConfigFile = file('keystore.config')
+            if (keystoreConfigFile.exists()) {
+                Properties keystoreProps = new Properties()
+                keystoreProps.load(new FileInputStream(file('keystore.config')))
 
-            keyAlias keystoreProps['keyAlias']
-            keyPassword keystoreProps['keyPassword']
-            storePassword keystoreProps['storePassword']
-            storeFile file(keystoreProps['storePath'])
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+                storePassword keystoreProps['storePassword']
+                storeFile file(keystoreProps['storePath'])
+            }
         }
     }
 
@@ -38,7 +41,9 @@ android {
 
     buildTypes {
         debug {
-            signingConfig signingConfigs.'default'
+            if (file('keystore.config').exists()) {
+                signingConfig signingConfigs.'default'
+            }
         }
 
         release {
