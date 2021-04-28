@@ -8,8 +8,8 @@
         android:title="Load Images"
         app:showAsAction="always" />
     <item
-        android:id="@+id/savePanorama"
+        android:id="@+id/save"
         android:icon="@android:drawable/ic_menu_save"
-        android:title="Save Panorama"
+        android:title="Save"
         app:showAsAction="always" />
 </menu>

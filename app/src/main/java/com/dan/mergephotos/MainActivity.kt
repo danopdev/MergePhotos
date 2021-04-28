@@ -101,7 +101,7 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
 
-            R.id.savePanorama -> {
+            R.id.save -> {
                 mergePhotosBig()
                 return true
             }
@@ -439,21 +439,21 @@ class MainActivity : AppCompatActivity() {
                     fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                 }
 
-                val panoramaRGB = Mat()
-                Imgproc.cvtColor(output, panoramaRGB, Imgproc.COLOR_BGR2RGB)
+                val outputRGB = Mat()
+                Imgproc.cvtColor(output, outputRGB, Imgproc.COLOR_BGR2RGB)
 
                 File(fileFullPath).parentFile?.mkdirs()
-                imwrite(fileFullPath, panoramaRGB)
+                imwrite(fileFullPath, outputRGB)
                 showToast("Saved to: ${fileName}")
 
-                //Add the panorama to gallery
+                //Add it to gallery
                 val values = ContentValues()
                 @Suppress("DEPRECATION")
                 values.put(MediaStore.Images.Media.DATA, fileFullPath)
                 values.put(MediaStore.Images.Media.MIME_TYPE, "image/png")
                 contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
             } catch (e: Exception) {
-                showToast("Failed to save panorama")
+                showToast("Failed to save")
             }
             BusyDialog.dismiss()
         }
@@ -463,7 +463,7 @@ class MainActivity : AppCompatActivity() {
         if (null != bitmap) {
             mBinding.imageView.setImageBitmap(bitmap)
         } else {
-            showToast("Failed to create panorama")
+            showToast("Failed to merge photos")
             mBinding.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
         }
 
