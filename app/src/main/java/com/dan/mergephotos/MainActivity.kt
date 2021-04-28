@@ -1,4 +1,4 @@
-package com.dan.panorama
+package com.dan.mergephotos
 
 import android.Manifest
 import android.content.ContentValues
@@ -21,7 +21,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.documentfile.provider.DocumentFile
-import com.dan.panorama.databinding.ActivityMainBinding
+import com.dan.mergephotos.databinding.ActivityMainBinding
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.calib3d.Calib3d.RANSAC

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Panorama</string>
+    <string name="app_name">Merge Photos</string>
     <string-array name="merge_modes">
         <item>Panorama</item>
         <item>Long exposure</item>

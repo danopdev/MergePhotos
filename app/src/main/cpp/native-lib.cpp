@@ -5,7 +5,7 @@
 #include "opencv2/stitching.hpp"
 
 
-#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,"STITCHER",__VA_ARGS__)
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,"MERGE",__VA_ARGS__)
 
 using namespace cv;
 
@@ -27,7 +27,7 @@ void Mat_to_vector_Mat(cv::Mat& mat, std::vector<cv::Mat>& v_mat)
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_dan_panorama_MainActivity_00024Companion_makePanoramaNative(JNIEnv *env, jobject thiz,
+Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv *env, jobject thiz,
                                                                      jlong images_nativeObj, jlong panorama_nativeObj,
                                                                      jint projection) {
 

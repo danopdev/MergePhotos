@@ -1,4 +1,4 @@
-package com.dan.panorama
+package com.dan.mergephotos
 
 import org.junit.Test
 
