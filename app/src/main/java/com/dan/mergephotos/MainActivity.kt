@@ -27,7 +27,7 @@ import org.opencv.android.Utils
 import org.opencv.calib3d.Calib3d.RANSAC
 import org.opencv.calib3d.Calib3d.findHomography
 import org.opencv.core.*
-import org.opencv.core.Core.NORM_HAMMING
+import org.opencv.core.Core.*
 import org.opencv.core.CvType.*
 import org.opencv.features2d.BFMatcher
 import org.opencv.features2d.ORB
@@ -278,11 +278,18 @@ class MainActivity : AppCompatActivity() {
         return grayMat
     }
 
+    private fun toNormalizedImage(image: Mat): Mat {
+        val grayMat = toGrayImage(image)
+        val normalizedMat = Mat()
+        normalize(grayMat, normalizedMat, 0.0, 255.0, NORM_MINMAX)
+        return normalizedMat
+    }
+
     private fun orbDetectAndCompute( orbDetector: ORB, image: Mat): Pair<MutableList<KeyPoint>, Mat> {
-        val grayImage = toGrayImage(image)
+        val normalizedImage = toNormalizedImage(image)
         val keyPoints = MatOfKeyPoint()
         val descriptors = Mat()
-        orbDetector.detectAndCompute(grayImage, Mat(), keyPoints, descriptors)
+        orbDetector.detectAndCompute(normalizedImage, Mat(), keyPoints, descriptors)
         return Pair(keyPoints.toList(), descriptors)
     }
 
@@ -307,7 +314,7 @@ class MainActivity : AppCompatActivity() {
             matcher.match(descriptors, refDescriptors, matches)
             val listMatches = matches.toList().sortedBy { it.distance }
             val usedSize = listMatches.size * 80 / 100
-            if (usedSize < 2) continue
+            if (usedSize < 10) continue
 
             val listPoints = mutableListOf<Point>()
             val listRefPoints = mutableListOf<Point>()
@@ -326,13 +333,16 @@ class MainActivity : AppCompatActivity() {
 
             val homography = findHomography( matListPoints, matListRefPoints, RANSAC )
             val alignedImage = Mat()
-            warpPerspective(images[imageIndex], alignedImage, homography, Size(images[imageIndex].cols().toDouble(), images[imageIndex].rows().toDouble()))
-            if (alignedImage.empty()) continue
-
-            alignedImages.add(alignedImage)
+            warpPerspective(images[imageIndex], alignedImage, homography, Size(images[0].cols().toDouble(), images[0].rows().toDouble()))
+            if (!alignedImage.empty()) alignedImages.add(alignedImage)
         }
 
         log("Align: End")
+
+        if (alignedImages.size < 2) {
+            Toast.makeText(applicationContext, "Failed to align images !", Toast.LENGTH_LONG).show()
+        }
+
         return alignedImages
     }
 
