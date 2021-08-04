@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         const val MERGE_MODE_PANORAMA = 0
         const val MERGE_MODE_LONG_EXPOSURE = 1
         const val MERGE_MODE_HDR = 2
+        const val MERGE_MODE_ALIGN = 3
 
         private fun log(msg: String) {
             Log.i("MERGE", msg)
@@ -68,8 +69,17 @@ class MainActivity : AppCompatActivity() {
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val mSettings: Settings by lazy { Settings(this) }
+
     private val mImages = mutableListOf<Mat>()
+    //cache alignment
+    private val mImagesAligned = mutableListOf<Mat>()
+    private var mImagesAlignedDone = false
+
     private val mImagesSmall = mutableListOf<Mat>()
+    //cache alignment
+    private val mImagesSmallAligned = mutableListOf<Mat>()
+    private var mImagesSmallAlignedDone = false
+
     private var mOutputName = Settings.DEFAULT_NAME
 
     init {
@@ -232,6 +242,10 @@ class MainActivity : AppCompatActivity() {
     private fun imagesClear() {
         mImages.clear()
         mImagesSmall.clear()
+        mImagesAligned.clear()
+        mImagesSmallAligned.clear()
+        mImagesAlignedDone = false
+        mImagesSmallAlignedDone = false
     }
 
     private fun bitmapToMat(bitmap: Bitmap): Mat {
@@ -266,10 +280,13 @@ class MainActivity : AppCompatActivity() {
         mImagesSmall.add(imgSmall)
     }
 
-    private fun mergePanorama(images: MutableList<Mat>, output: Mat, projection: Int) {
+    private fun mergePanorama(small: Boolean, projection: Int): List<Mat> {
         log("Panorama: Start")
-        makePanorama(images.toList(), output, projection)
+        val inputImages = if (small) mImagesSmall else mImages
+        val output = Mat()
+        makePanorama(inputImages.toList(), output, projection)
         log("Panorama: ${ if (output.empty()) "Failed" else "Success" }")
+        return if (output.empty()) listOf() else listOf(output)
     }
 
     private fun toGrayImage(image: Mat): Mat {
@@ -293,20 +310,25 @@ class MainActivity : AppCompatActivity() {
         return Pair(keyPoints.toList(), descriptors)
     }
 
-    private fun alignImages(images: MutableList<Mat>): MutableList<Mat> {
+    private fun alignImages(small: Boolean): MutableList<Mat> {
         log("Align: Start")
 
-        val alignedImages = mutableListOf<Mat>()
-        alignedImages.add(images[0])
+        val outputImages = if (small) mImagesSmallAligned else mImagesAligned
+        val alreadyAligned = if (small) mImagesSmallAlignedDone else mImagesAlignedDone
+        if (alreadyAligned) return outputImages
+
+        val inputImages = if (small) mImagesSmall else mImages
+
+        outputImages.add(inputImages[0])
 
         val orbDetector = ORB.create(5000)
         val matcher = BFMatcher.create(NORM_HAMMING, true)
-        val refInfo = orbDetectAndCompute(orbDetector, images[0])
+        val refInfo = orbDetectAndCompute(orbDetector, inputImages[0])
         val refKeyPoints = refInfo.first
         val refDescriptors = refInfo.second
 
-        for (imageIndex in 1 until images.size) {
-            val info = orbDetectAndCompute(orbDetector, images[imageIndex])
+        for (imageIndex in 1 until inputImages.size) {
+            val info = orbDetectAndCompute(orbDetector, inputImages[imageIndex])
             val keyPoints = info.first
             val descriptors = info.second
 
@@ -333,28 +355,35 @@ class MainActivity : AppCompatActivity() {
 
             val homography = findHomography( matListPoints, matListRefPoints, RANSAC )
             val alignedImage = Mat()
-            warpPerspective(images[imageIndex], alignedImage, homography, Size(images[0].cols().toDouble(), images[0].rows().toDouble()))
-            if (!alignedImage.empty()) alignedImages.add(alignedImage)
+            warpPerspective(inputImages[imageIndex], alignedImage, homography, Size(inputImages[0].cols().toDouble(), inputImages[0].rows().toDouble()))
+            if (!alignedImage.empty()) outputImages.add(alignedImage)
         }
 
         log("Align: End")
 
-        if (alignedImages.size < 2) {
+        if (outputImages.size < 2) {
             Toast.makeText(applicationContext, "Failed to align images !", Toast.LENGTH_LONG).show()
         }
 
-        return alignedImages
+        if (small)
+            mImagesSmallAlignedDone = true
+        else
+            mImagesAlignedDone = true
+
+        return outputImages
     }
 
-    private fun mergeLongExposure(images: MutableList<Mat>, output: Mat) {
+    private fun mergeLongExposure(small: Boolean): List<Mat> {
         log("Long Exposure: Start")
 
-        val alignedImages = alignImages(images)
+        val alignedImages = alignImages(small)
+        val output = Mat()
+
         if (alignedImages.size >= 2) {
             val floatMat = Mat()
             alignedImages[0].convertTo(floatMat, CV_32FC3)
 
-            for (imageIndex in 1 until images.size) {
+            for (imageIndex in 1 until alignedImages.size) {
                 Core.add(floatMat, alignedImages[imageIndex], floatMat, Mat(), CV_32FC3)
             }
 
@@ -365,12 +394,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         log("Long Exposure: ${ if (output.empty()) "Failed" else "Success" }")
+        return if (output.empty()) listOf() else listOf(output)
     }
 
-    private fun mergeHdr(images: MutableList<Mat>, output: Mat) {
+    private fun mergeHdr(small: Boolean): List<Mat> {
         log("HDR: Start")
 
-        val alignedImages = alignImages(images)
+        val alignedImages = alignImages(small)
+        val output = Mat()
+
         if (alignedImages.size >= 2) {
             val hdrMat = Mat()
             val mergeMertens = createMergeMertens()
@@ -383,12 +415,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         log("HDR Exposure: ${ if (output.empty()) "Failed" else "Success" }")
+        return if (output.empty()) listOf() else listOf(output)
     }
 
-    private fun mergePhotos(images: MutableList<Mat>, l: (output: Mat, name: String) -> Unit) {
+    private fun mergePhotos(small: Boolean, l: (output: List<Mat>, name: String) -> Unit) {
+        val images = if (small) mImagesSmall else mImages
         if (images.size <= 1) {
             showNotEnoughImagesToast()
-            l.invoke(Mat(), "")
+            l.invoke(listOf(), "")
             return
         }
 
@@ -398,22 +432,27 @@ class MainActivity : AppCompatActivity() {
         val panoramaProjection = mBinding.spinnerProjection.selectedItemPosition
 
         runFakeAsync {
-            val output = Mat()
+            var output = listOf<Mat>()
             var name = ""
             when(mergeMode) {
                 MERGE_MODE_PANORAMA -> {
-                    mergePanorama(images, output, panoramaProjection)
+                    output = mergePanorama(small, panoramaProjection)
                     name = "panorama"
                 }
 
                 MERGE_MODE_LONG_EXPOSURE -> {
-                    mergeLongExposure(images, output)
+                    output = mergeLongExposure(small)
                     name = "longexposure"
                 }
 
                 MERGE_MODE_HDR -> {
-                    mergeHdr(images, output)
+                    output = mergeHdr(small)
                     name = "hdr"
+                }
+
+                MERGE_MODE_ALIGN -> {
+                    output = alignImages(small)
+                    name = "aligned"
                 }
             }
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -423,47 +462,50 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mergePhotosSmall() {
-        mergePhotos(mImagesSmall) { output, _ ->
-            if (output.empty()) {
+        mergePhotos(true) { outputImages, _ ->
+            if (outputImages.isEmpty()) {
                 setBitmap(null)
             } else {
-                val bitmap = Bitmap.createBitmap(output.cols(), output.rows(), Bitmap.Config.ARGB_8888)
-                Utils.matToBitmap(output, bitmap)
+                val outputImage = outputImages[0]
+                val bitmap = Bitmap.createBitmap(outputImage.cols(), outputImage.rows(), Bitmap.Config.ARGB_8888)
+                Utils.matToBitmap(outputImage, bitmap)
                 setBitmap(bitmap)
             }
         }
     }
 
     private fun mergePhotosBig() {
-        mergePhotos(mImages) { output, name ->
+        mergePhotos(false) { outputImages, name ->
             BusyDialog.show(supportFragmentManager, "Saving")
 
-            try {
-                var fileName = "${mOutputName}_${name}.png"
-                var fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
-                var counter = 0
-                while (File(fileFullPath).exists() && counter < 998) {
-                    counter++
-                    val counterStr = "%03d".format(counter)
-                    fileName = "${mOutputName}_${name}_${counterStr}.png"
-                    fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
+            for (outputImage in outputImages) {
+                try {
+                    var fileName = "${mOutputName}_${name}.png"
+                    var fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
+                    var counter = 0
+                    while (File(fileFullPath).exists() && counter < 998) {
+                        counter++
+                        val counterStr = "%03d".format(counter)
+                        fileName = "${mOutputName}_${name}_${counterStr}.png"
+                        fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
+                    }
+
+                    val outputRGB = Mat()
+                    Imgproc.cvtColor(outputImage, outputRGB, Imgproc.COLOR_BGR2RGB)
+
+                    File(fileFullPath).parentFile?.mkdirs()
+                    imwrite(fileFullPath, outputRGB)
+                    showToast("Saved to: ${fileName}")
+
+                    //Add it to gallery
+                    val values = ContentValues()
+                    @Suppress("DEPRECATION")
+                    values.put(MediaStore.Images.Media.DATA, fileFullPath)
+                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                } catch (e: Exception) {
+                    showToast("Failed to save")
                 }
-
-                val outputRGB = Mat()
-                Imgproc.cvtColor(output, outputRGB, Imgproc.COLOR_BGR2RGB)
-
-                File(fileFullPath).parentFile?.mkdirs()
-                imwrite(fileFullPath, outputRGB)
-                showToast("Saved to: ${fileName}")
-
-                //Add it to gallery
-                val values = ContentValues()
-                @Suppress("DEPRECATION")
-                values.put(MediaStore.Images.Media.DATA, fileFullPath)
-                values.put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            } catch (e: Exception) {
-                showToast("Failed to save")
             }
             BusyDialog.dismiss()
         }

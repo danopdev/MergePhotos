@@ -4,6 +4,7 @@
         <item>Panorama</item>
         <item>Long exposure</item>
         <item>HDR</item>
+        <item>Align</item>
     </string-array>
     <string-array name="projections">
         <item>Plane</item>
