@@ -437,7 +437,7 @@ class MainActivity : AppCompatActivity() {
             when(mergeMode) {
                 MERGE_MODE_PANORAMA -> {
                     output = mergePanorama(small, panoramaProjection)
-                    name = "panorama"
+                    name = "panorama_" + mBinding.spinnerProjection.selectedItem.toString().toLowerCase()
                 }
 
                 MERGE_MODE_LONG_EXPOSURE -> {
