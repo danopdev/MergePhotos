@@ -37,6 +37,7 @@ import org.opencv.imgproc.Imgproc.*
 import org.opencv.photo.Photo.createMergeMertens
 import org.opencv.utils.Converters
 import java.io.File
+import java.util.*
 import kotlin.concurrent.timer
 
 
@@ -253,7 +254,7 @@ class MainActivity : AppCompatActivity() {
         Utils.bitmapToMat(bitmap, imgRGBA)
         if (imgRGBA.empty()) return imgRGBA
         val img = Mat()
-        Imgproc.cvtColor(imgRGBA, img, Imgproc.COLOR_BGRA2BGR)
+        cvtColor(imgRGBA, img, COLOR_BGRA2BGR)
         return img
     }
 
@@ -384,11 +385,11 @@ class MainActivity : AppCompatActivity() {
             alignedImages[0].convertTo(floatMat, CV_32FC3)
 
             for (imageIndex in 1 until alignedImages.size) {
-                Core.add(floatMat, alignedImages[imageIndex], floatMat, Mat(), CV_32FC3)
+                add(floatMat, alignedImages[imageIndex], floatMat, Mat(), CV_32FC3)
             }
 
             val multiplyValue = 1.0 / alignedImages.size.toDouble()
-            Core.multiply(floatMat, Scalar(multiplyValue, multiplyValue,multiplyValue), floatMat)
+            multiply(floatMat, Scalar(multiplyValue, multiplyValue,multiplyValue), floatMat)
 
             floatMat.convertTo(output, CV_8UC3)
         }
@@ -409,7 +410,7 @@ class MainActivity : AppCompatActivity() {
             mergeMertens.process(alignedImages, hdrMat)
 
             if (!hdrMat.empty()) {
-                Core.multiply(hdrMat, Scalar(255.0, 255.0,255.0), hdrMat)
+                multiply(hdrMat, Scalar(255.0, 255.0,255.0), hdrMat)
                 hdrMat.convertTo(output, CV_8UC3)
             }
         }
@@ -437,7 +438,7 @@ class MainActivity : AppCompatActivity() {
             when(mergeMode) {
                 MERGE_MODE_PANORAMA -> {
                     output = mergePanorama(small, panoramaProjection)
-                    name = "panorama_" + mBinding.spinnerProjection.selectedItem.toString().toLowerCase()
+                    name = "panorama_" + mBinding.spinnerProjection.selectedItem.toString().toLowerCase(Locale.ROOT)
                 }
 
                 MERGE_MODE_LONG_EXPOSURE -> {
@@ -491,7 +492,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     val outputRGB = Mat()
-                    Imgproc.cvtColor(outputImage, outputRGB, Imgproc.COLOR_BGR2RGB)
+                    cvtColor(outputImage, outputRGB, COLOR_BGR2RGB)
 
                     File(fileFullPath).parentFile?.mkdirs()
                     imwrite(fileFullPath, outputRGB)
