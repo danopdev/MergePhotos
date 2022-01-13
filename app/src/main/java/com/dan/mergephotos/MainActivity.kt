@@ -56,6 +56,10 @@ class MainActivity : AppCompatActivity() {
         const val MERGE_MODE_HDR = 2
         const val MERGE_MODE_ALIGN = 3
 
+        const val CACHE_IMAGES = "Big"
+        const val CACHE_IMAGES_SMALL = "Small"
+        const val CACHE_IMAGES_ALIGNED_SUFFIX = ".Aligned"
+
         private fun log(msg: String) {
             Log.i("MERGE", msg)
         }
@@ -70,17 +74,7 @@ class MainActivity : AppCompatActivity() {
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val mSettings: Settings by lazy { Settings(this) }
-
-    private val mImages = mutableListOf<Mat>()
-    //cache alignment
-    private val mImagesAligned = mutableListOf<Mat>()
-    private var mImagesAlignedDone = false
-
-    private val mImagesSmall = mutableListOf<Mat>()
-    //cache alignment
-    private val mImagesSmallAligned = mutableListOf<Mat>()
-    private var mImagesSmallAlignedDone = false
-
+    private val mCache = mutableMapOf<String, MutableList<Mat>>()
     private var mOutputName = Settings.DEFAULT_NAME
 
     init {
@@ -129,6 +123,9 @@ class MainActivity : AppCompatActivity() {
             mOutputName = Settings.DEFAULT_NAME
             BusyDialog.show(supportFragmentManager, "Loading images")
 
+            val imagesBig = mutableListOf<Mat>()
+            val imagesSmall = mutableListOf<Mat>()
+
             runFakeAsync {
                 data?.clipData?.let { clipData ->
                     val count = clipData.itemCount
@@ -150,7 +147,10 @@ class MainActivity : AppCompatActivity() {
                         try {
                             contentResolver.openInputStream(clipData.getItemAt(i).uri)?.let { inputStream ->
                                 BitmapFactory.decodeStream(inputStream)?.let{ bitmap ->
-                                    imageAppend(bitmap)
+                                    loadBitmap(bitmap)?.let { images ->
+                                        imagesBig.add(images.first)
+                                        imagesSmall.add(images.second)
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
@@ -158,10 +158,11 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                if (mImages.size < 2) {
-                    imagesClear()
+                if (imagesBig.size < 2) {
                     showNotEnoughImagesToast()
                 } else {
+                    mCache[CACHE_IMAGES] = imagesBig
+                    mCache[CACHE_IMAGES_SMALL] = imagesSmall
                     mergePhotosSmall()
                 }
 
@@ -241,12 +242,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun imagesClear() {
-        mImages.clear()
-        mImagesSmall.clear()
-        mImagesAligned.clear()
-        mImagesSmallAligned.clear()
-        mImagesAlignedDone = false
-        mImagesSmallAlignedDone = false
+        mCache.clear()
     }
 
     private fun bitmapToMat(bitmap: Bitmap): Mat {
@@ -258,10 +254,10 @@ class MainActivity : AppCompatActivity() {
         return img
     }
 
-    private fun imageAppend(bitmap: Bitmap) {
+    private fun loadBitmap(bitmap: Bitmap) : Pair<Mat,Mat>? {
         val img = bitmapToMat(bitmap)
         log("Load OK")
-        if (img.empty()) return
+        if (img.empty()) return null
 
         val widthSmall: Int
         val heightSmall: Int
@@ -277,13 +273,12 @@ class MainActivity : AppCompatActivity() {
         val imgSmall = Mat()
         resize(img, imgSmall, Size(widthSmall.toDouble(), heightSmall.toDouble()))
 
-        mImages.add(img)
-        mImagesSmall.add(imgSmall)
+        return Pair(img, imgSmall)
     }
 
-    private fun mergePanorama(small: Boolean, projection: Int): List<Mat> {
+    private fun mergePanorama(prefix: String, projection: Int): List<Mat> {
         log("Panorama: Start")
-        val inputImages = if (small) mImagesSmall else mImages
+        val inputImages = mCache[prefix] ?: return listOf()
         val output = Mat()
         makePanorama(inputImages.toList(), output, projection)
         log("Panorama: ${ if (output.empty()) "Failed" else "Success" }")
@@ -311,73 +306,70 @@ class MainActivity : AppCompatActivity() {
         return Pair(keyPoints.toList(), descriptors)
     }
 
-    private fun alignImages(small: Boolean): MutableList<Mat> {
+    private fun alignImages(prefix: String): MutableList<Mat> {
+        val inputImages = mCache[prefix] ?: mutableListOf()
+
         log("Align: Start")
 
-        val outputImages = if (small) mImagesSmallAligned else mImagesAligned
-        val alreadyAligned = if (small) mImagesSmallAlignedDone else mImagesAlignedDone
-        if (alreadyAligned) return outputImages
+        var alignedImages = mCache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
+        if (null == alignedImages) {
+            alignedImages = mutableListOf<Mat>()
 
-        val inputImages = if (small) mImagesSmall else mImages
+            alignedImages.add(inputImages[0])
+            val orbDetector = ORB.create(5000)
+            val matcher = BFMatcher.create(NORM_HAMMING, true)
+            val refInfo = orbDetectAndCompute(orbDetector, inputImages[0])
+            val refKeyPoints = refInfo.first
+            val refDescriptors = refInfo.second
 
-        outputImages.add(inputImages[0])
+            for (imageIndex in 1 until inputImages.size) {
+                val info = orbDetectAndCompute(orbDetector, inputImages[imageIndex])
+                val keyPoints = info.first
+                val descriptors = info.second
 
-        val orbDetector = ORB.create(5000)
-        val matcher = BFMatcher.create(NORM_HAMMING, true)
-        val refInfo = orbDetectAndCompute(orbDetector, inputImages[0])
-        val refKeyPoints = refInfo.first
-        val refDescriptors = refInfo.second
+                val matches = MatOfDMatch()
+                matcher.match(descriptors, refDescriptors, matches)
+                val listMatches = matches.toList().sortedBy { it.distance }
+                val usedSize = listMatches.size * 80 / 100
+                if (usedSize < 10) continue
 
-        for (imageIndex in 1 until inputImages.size) {
-            val info = orbDetectAndCompute(orbDetector, inputImages[imageIndex])
-            val keyPoints = info.first
-            val descriptors = info.second
+                val listPoints = mutableListOf<Point>()
+                val listRefPoints = mutableListOf<Point>()
+                for (matchIndex in 0 until usedSize) {
+                    val queryIdx = listMatches[matchIndex].queryIdx
+                    val trainIdx = listMatches[matchIndex].trainIdx
+                    listPoints.add(keyPoints[queryIdx].pt)
+                    listRefPoints.add(refKeyPoints[trainIdx].pt)
+                }
 
-            val matches = MatOfDMatch()
-            matcher.match(descriptors, refDescriptors, matches)
-            val listMatches = matches.toList().sortedBy { it.distance }
-            val usedSize = listMatches.size * 80 / 100
-            if (usedSize < 10) continue
+                val matListPoints = MatOfPoint2f()
+                matListPoints.fromList(listPoints)
 
-            val listPoints = mutableListOf<Point>()
-            val listRefPoints = mutableListOf<Point>()
-            for (matchIndex in 0 until usedSize) {
-                val queryIdx = listMatches[matchIndex].queryIdx
-                val trainIdx = listMatches[matchIndex].trainIdx
-                listPoints.add(keyPoints[queryIdx].pt)
-                listRefPoints.add(refKeyPoints[trainIdx].pt)
+                val matListRefPoints = MatOfPoint2f()
+                matListRefPoints.fromList(listRefPoints)
+
+                val homography = findHomography(matListPoints, matListRefPoints, RANSAC)
+                val alignedImage = Mat()
+                warpPerspective(inputImages[imageIndex], alignedImage, homography, Size(inputImages[0].cols().toDouble(), inputImages[0].rows().toDouble()))
+                if (!alignedImage.empty()) alignedImages.add(alignedImage)
             }
 
-            val matListPoints = MatOfPoint2f()
-            matListPoints.fromList(listPoints)
-
-            val matListRefPoints = MatOfPoint2f()
-            matListRefPoints.fromList(listRefPoints)
-
-            val homography = findHomography( matListPoints, matListRefPoints, RANSAC )
-            val alignedImage = Mat()
-            warpPerspective(inputImages[imageIndex], alignedImage, homography, Size(inputImages[0].cols().toDouble(), inputImages[0].rows().toDouble()))
-            if (!alignedImage.empty()) outputImages.add(alignedImage)
+            mCache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX] = alignedImages
         }
 
         log("Align: End")
 
-        if (outputImages.size < 2) {
+        if (alignedImages.size < 2) {
             Toast.makeText(applicationContext, "Failed to align images !", Toast.LENGTH_LONG).show()
         }
 
-        if (small)
-            mImagesSmallAlignedDone = true
-        else
-            mImagesAlignedDone = true
-
-        return outputImages
+        return alignedImages
     }
 
-    private fun mergeLongExposure(small: Boolean): List<Mat> {
+    private fun mergeLongExposure(prefix: String): List<Mat> {
         log("Long Exposure: Start")
 
-        val alignedImages = alignImages(small)
+        val alignedImages = alignImages(prefix)
         val output = Mat()
 
         if (alignedImages.size >= 2) {
@@ -398,10 +390,10 @@ class MainActivity : AppCompatActivity() {
         return if (output.empty()) listOf() else listOf(output)
     }
 
-    private fun mergeHdr(small: Boolean): List<Mat> {
+    private fun mergeHdr(prefix: String): List<Mat> {
         log("HDR: Start")
 
-        val alignedImages = alignImages(small)
+        val alignedImages = alignImages(prefix)
         val output = Mat()
 
         if (alignedImages.size >= 2) {
@@ -419,14 +411,7 @@ class MainActivity : AppCompatActivity() {
         return if (output.empty()) listOf() else listOf(output)
     }
 
-    private fun mergePhotos(small: Boolean, l: (output: List<Mat>, name: String) -> Unit) {
-        val images = if (small) mImagesSmall else mImages
-        if (images.size <= 1) {
-            showNotEnoughImagesToast()
-            l.invoke(listOf(), "")
-            return
-        }
-
+    private fun mergePhotos(prefix: String, l: (output: List<Mat>, name: String) -> Unit) {
         BusyDialog.show(supportFragmentManager, "Merging photos ...")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val mergeMode = mBinding.spinnerMergeMode.selectedItemPosition
@@ -437,22 +422,22 @@ class MainActivity : AppCompatActivity() {
             var name = ""
             when(mergeMode) {
                 MERGE_MODE_PANORAMA -> {
-                    output = mergePanorama(small, panoramaProjection)
+                    output = mergePanorama(prefix, panoramaProjection)
                     name = "panorama_" + mBinding.spinnerProjection.selectedItem.toString().toLowerCase(Locale.ROOT)
                 }
 
                 MERGE_MODE_LONG_EXPOSURE -> {
-                    output = mergeLongExposure(small)
+                    output = mergeLongExposure(prefix)
                     name = "longexposure"
                 }
 
                 MERGE_MODE_HDR -> {
-                    output = mergeHdr(small)
+                    output = mergeHdr(prefix)
                     name = "hdr"
                 }
 
                 MERGE_MODE_ALIGN -> {
-                    output = alignImages(small)
+                    output = alignImages(prefix)
                     name = "aligned"
                 }
             }
@@ -463,7 +448,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mergePhotosSmall() {
-        mergePhotos(true) { outputImages, _ ->
+        mergePhotos(CACHE_IMAGES_SMALL) { outputImages, _ ->
             if (outputImages.isEmpty()) {
                 setBitmap(null)
             } else {
@@ -476,7 +461,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mergePhotosBig() {
-        mergePhotos(false) { outputImages, name ->
+        mergePhotos(CACHE_IMAGES) { outputImages, name ->
             BusyDialog.show(supportFragmentManager, "Saving")
 
             for (outputImage in outputImages) {
@@ -542,7 +527,8 @@ class MainActivity : AppCompatActivity() {
 
         mBinding.spinnerProjection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
-                if (mImages.size >= 2) {
+                val inputImages = mCache[CACHE_IMAGES_SMALL]
+                if (null != inputImages && inputImages.size >= 2) {
                     mergePhotosSmall()
                 }
 
@@ -558,7 +544,8 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
                 showMergeModeParams()
 
-                if (mImages.size >= 2) {
+                val inputImages = mCache[CACHE_IMAGES_SMALL]
+                if (null != inputImages && inputImages.size >= 2) {
                     mergePhotosSmall()
                 }
             }
