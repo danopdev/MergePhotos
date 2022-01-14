@@ -6,9 +6,14 @@
         <item>HDR</item>
         <item>Align</item>
     </string-array>
-    <string-array name="projections">
+    <string-array name="panorama_modes">
         <item>Plane</item>
         <item>Cylindrical</item>
         <item>Spherical</item>
+    </string-array>
+    <string-array name="longexposure_modes">
+        <item>Average</item>
+        <item>Nearest to Average</item>
+        <item>Farthest from Average</item>
     </string-array>
 </resources>

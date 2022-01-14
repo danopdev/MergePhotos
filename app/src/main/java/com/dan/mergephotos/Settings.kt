@@ -14,58 +14,8 @@ class Settings( private val activity: Activity) {
 
     companion object {
         const val SAVE_FOLDER = "/storage/emulated/0/MergePhotos"
-
         const val IMG_SIZE_SMALL = 512
-
         const val DEFAULT_NAME = "output"
-
-        const val PANORAMA_MODE_PLANE = 0
-        const val PANORAMA_MODE_CYLINDRICAL = 1
-        const val PANORAMA_MODE_SPHERICAL = 2
     }
 
-    var panoramaMode: Int = PANORAMA_MODE_CYLINDRICAL
-
-    init {
-        loadProperties()
-    }
-
-    private fun forEachSettingProperty( listener: (KMutableProperty<*>)->Unit ) {
-        for( member in this::class.declaredMemberProperties ) {
-            if (member.visibility == KVisibility.PUBLIC && member is KMutableProperty<*>) {
-                listener.invoke(member)
-            }
-        }
-    }
-
-    private fun loadProperties() {
-        val preferences = activity.getPreferences(Context.MODE_PRIVATE)
-
-        forEachSettingProperty { property ->
-            when( property.returnType ) {
-                Boolean::class.createType() -> property.setter.call( this, preferences.getBoolean( property.name, property.getter.call(this) as Boolean ) )
-                Int::class.createType() -> property.setter.call( this, preferences.getInt( property.name, property.getter.call(this) as Int ) )
-                Long::class.createType() -> property.setter.call( this, preferences.getLong( property.name, property.getter.call(this) as Long ) )
-                Float::class.createType() -> property.setter.call( this, preferences.getFloat( property.name, property.getter.call(this) as Float ) )
-                String::class.createType() -> property.setter.call( this, preferences.getString( property.name, property.getter.call(this) as String ) )
-            }
-        }
-    }
-
-    fun saveProperties() {
-        val preferences = activity.getPreferences(Context.MODE_PRIVATE)
-        val editor = preferences.edit()
-
-        forEachSettingProperty { property ->
-            when( property.returnType ) {
-                Boolean::class.createType() -> editor.putBoolean( property.name, property.getter.call(this) as Boolean )
-                Int::class.createType() -> editor.putInt( property.name, property.getter.call(this) as Int )
-                Long::class.createType() -> editor.putLong( property.name, property.getter.call(this) as Long )
-                Float::class.createType() -> editor.putFloat( property.name, property.getter.call(this) as Float )
-                String::class.createType() -> editor.putString( property.name, property.getter.call(this) as String )
-            }
-        }
-
-        editor.apply()
-    }
 }

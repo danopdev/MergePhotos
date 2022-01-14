@@ -14,6 +14,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -32,7 +33,6 @@ import org.opencv.core.CvType.*
 import org.opencv.features2d.BFMatcher
 import org.opencv.features2d.ORB
 import org.opencv.imgcodecs.Imgcodecs.imwrite
-import org.opencv.imgproc.Imgproc
 import org.opencv.imgproc.Imgproc.*
 import org.opencv.photo.Photo.createMergeMertens
 import org.opencv.utils.Converters
@@ -51,29 +51,40 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_OPEN_IMAGES = 2
 
-        const val MERGE_MODE_PANORAMA = 0
-        const val MERGE_MODE_LONG_EXPOSURE = 1
-        const val MERGE_MODE_HDR = 2
-        const val MERGE_MODE_ALIGN = 3
+        const val MERGE_PANORAMA = 0
+        const val MERGE_LONG_EXPOSURE = 1
+        const val MERGE_HDR = 2
+        const val MERGE_ALIGN = 3
+
+        const val LONG_EXPOSURE_AVERAGE = 0
+        const val LONG_EXPOSURE_NEAREST_TO_AVERAGE = 1
+        const val LONG_EXPOSURE_FARTHEST_FROM_AVERAGE = 2
 
         const val CACHE_IMAGES = "Big"
         const val CACHE_IMAGES_SMALL = "Small"
         const val CACHE_IMAGES_ALIGNED_SUFFIX = ".Aligned"
+        const val CACHE_IMAGES_AVERAGE_SUFFIX = ".Average"
 
         private fun log(msg: String) {
             Log.i("MERGE", msg)
         }
 
         fun makePanorama(images: List<Mat>, panorama: Mat, projection: Int): Boolean {
-            val images_mat = Converters.vector_Mat_to_Mat(images)
-            return makePanoramaNative(images_mat.nativeObj, panorama.nativeObj, projection)
+            val imagesMat = Converters.vector_Mat_to_Mat(images)
+            return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, projection)
+        }
+
+        fun makeLongExposureMergeWithDistance(images: List<Mat>, averageImage: Mat, outputImage: Mat, nearest: Boolean): Boolean {
+            if (images.size < 3) return false
+            val imagesMat = Converters.vector_Mat_to_Mat(images)
+            return makeLongExposureMergeWithDistanceNative(imagesMat.nativeObj, averageImage.nativeObj, outputImage.nativeObj, nearest)
         }
 
         external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
+        external fun makeLongExposureMergeWithDistanceNative(images: Long, averageImage: Long, outputImage: Long, nearest: Boolean): Boolean
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
-    private val mSettings: Settings by lazy { Settings(this) }
     private val mCache = mutableMapOf<String, MutableList<Mat>>()
     private var mOutputName = Settings.DEFAULT_NAME
 
@@ -254,7 +265,7 @@ class MainActivity : AppCompatActivity() {
         return img
     }
 
-    private fun loadBitmap(bitmap: Bitmap) : Pair<Mat,Mat>? {
+    private fun loadBitmap(bitmap: Bitmap) : Pair<Mat, Mat>? {
         val img = bitmapToMat(bitmap)
         log("Load OK")
         if (img.empty()) return null
@@ -276,12 +287,12 @@ class MainActivity : AppCompatActivity() {
         return Pair(img, imgSmall)
     }
 
-    private fun mergePanorama(prefix: String, projection: Int): List<Mat> {
+    private fun mergePanorama(prefix: String, mode: Int): List<Mat> {
         log("Panorama: Start")
         val inputImages = mCache[prefix] ?: return listOf()
         val output = Mat()
-        makePanorama(inputImages.toList(), output, projection)
-        log("Panorama: ${ if (output.empty()) "Failed" else "Success" }")
+        makePanorama(inputImages.toList(), output, mode)
+        log("Panorama: ${if (output.empty()) "Failed" else "Success"}")
         return if (output.empty()) listOf() else listOf(output)
     }
 
@@ -298,7 +309,7 @@ class MainActivity : AppCompatActivity() {
         return normalizedMat
     }
 
-    private fun orbDetectAndCompute( orbDetector: ORB, image: Mat): Pair<MutableList<KeyPoint>, Mat> {
+    private fun orbDetectAndCompute(orbDetector: ORB, image: Mat): Pair<MutableList<KeyPoint>, Mat> {
         val normalizedImage = toNormalizedImage(image)
         val keyPoints = MatOfKeyPoint()
         val descriptors = Mat()
@@ -313,7 +324,7 @@ class MainActivity : AppCompatActivity() {
 
         var alignedImages = mCache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
         if (null == alignedImages) {
-            alignedImages = mutableListOf<Mat>()
+            alignedImages = mutableListOf()
 
             alignedImages.add(inputImages[0])
             val orbDetector = ORB.create(5000)
@@ -366,28 +377,61 @@ class MainActivity : AppCompatActivity() {
         return alignedImages
     }
 
-    private fun mergeLongExposure(prefix: String): List<Mat> {
-        log("Long Exposure: Start")
+    private fun calculateAverage(prefix: String): List<Mat> {
+        var averageImages = mCache[prefix + CACHE_IMAGES_AVERAGE_SUFFIX]
 
-        val alignedImages = alignImages(prefix)
-        val output = Mat()
+        if (null == averageImages) {
+            averageImages = mutableListOf()
+            val alignedImages = alignImages(prefix)
+            val output = Mat()
 
-        if (alignedImages.size >= 2) {
-            val floatMat = Mat()
-            alignedImages[0].convertTo(floatMat, CV_32FC3)
+            if (alignedImages.size >= 2) {
+                val floatMat = Mat()
+                alignedImages[0].convertTo(floatMat, CV_32FC3)
 
-            for (imageIndex in 1 until alignedImages.size) {
-                add(floatMat, alignedImages[imageIndex], floatMat, Mat(), CV_32FC3)
+                for (imageIndex in 1 until alignedImages.size) {
+                    add(floatMat, alignedImages[imageIndex], floatMat, Mat(), CV_32FC3)
+                }
+
+                val multiplyValue = 1.0 / alignedImages.size.toDouble()
+                multiply(floatMat, Scalar(multiplyValue, multiplyValue, multiplyValue), floatMat)
+
+                floatMat.convertTo(output, CV_8UC3)
             }
 
-            val multiplyValue = 1.0 / alignedImages.size.toDouble()
-            multiply(floatMat, Scalar(multiplyValue, multiplyValue,multiplyValue), floatMat)
-
-            floatMat.convertTo(output, CV_8UC3)
+            if (!output.empty()) averageImages.add(output)
+            mCache[prefix + CACHE_IMAGES_AVERAGE_SUFFIX] = averageImages
         }
 
-        log("Long Exposure: ${ if (output.empty()) "Failed" else "Success" }")
-        return if (output.empty()) listOf() else listOf(output)
+        return averageImages
+    }
+
+    private fun mergeLongExposure(prefix: String, mode: Int): List<Mat> {
+        log("Long Exposure: Start")
+
+        val averageImages = calculateAverage(prefix)
+        var resultImages: List<Mat> = listOf()
+
+        when(mode) {
+            LONG_EXPOSURE_AVERAGE -> resultImages = averageImages
+
+            LONG_EXPOSURE_NEAREST_TO_AVERAGE, LONG_EXPOSURE_FARTHEST_FROM_AVERAGE -> {
+                if (!averageImages.isEmpty()) {
+                    val alignedImages = mCache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
+                    if (null != alignedImages) {
+                        val outputImage = Mat()
+                        if (makeLongExposureMergeWithDistance(alignedImages, averageImages[0], outputImage, LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode)) {
+                            if (!outputImage.empty()) {
+                                resultImages = listOf(outputImage)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        log("Long Exposure: ${if (resultImages.isEmpty()) "Failed" else "Success"}")
+        return resultImages
     }
 
     private fun mergeHdr(prefix: String): List<Mat> {
@@ -402,45 +446,48 @@ class MainActivity : AppCompatActivity() {
             mergeMertens.process(alignedImages, hdrMat)
 
             if (!hdrMat.empty()) {
-                multiply(hdrMat, Scalar(255.0, 255.0,255.0), hdrMat)
+                multiply(hdrMat, Scalar(255.0, 255.0, 255.0), hdrMat)
                 hdrMat.convertTo(output, CV_8UC3)
             }
         }
 
-        log("HDR Exposure: ${ if (output.empty()) "Failed" else "Success" }")
+        log("HDR Exposure: ${if (output.empty()) "Failed" else "Success"}")
         return if (output.empty()) listOf() else listOf(output)
     }
 
     private fun mergePhotos(prefix: String, l: (output: List<Mat>, name: String) -> Unit) {
         BusyDialog.show(supportFragmentManager, "Merging photos ...")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        val mergeMode = mBinding.spinnerMergeMode.selectedItemPosition
-        val panoramaProjection = mBinding.spinnerProjection.selectedItemPosition
+        val merge = mBinding.spinnerMerge.selectedItemPosition
+        val mode = mBinding.spinnerMode.selectedItemPosition
 
         runFakeAsync {
             var output = listOf<Mat>()
             var name = ""
-            when(mergeMode) {
-                MERGE_MODE_PANORAMA -> {
-                    output = mergePanorama(prefix, panoramaProjection)
-                    name = "panorama_" + mBinding.spinnerProjection.selectedItem.toString().toLowerCase(Locale.ROOT)
+            when(merge) {
+                MERGE_PANORAMA -> {
+                    output = mergePanorama(prefix, mode)
+                    name = "panorama"
                 }
 
-                MERGE_MODE_LONG_EXPOSURE -> {
-                    output = mergeLongExposure(prefix)
+                MERGE_LONG_EXPOSURE -> {
+                    output = mergeLongExposure(prefix, mode)
                     name = "longexposure"
                 }
 
-                MERGE_MODE_HDR -> {
+                MERGE_HDR -> {
                     output = mergeHdr(prefix)
                     name = "hdr"
                 }
 
-                MERGE_MODE_ALIGN -> {
+                MERGE_ALIGN -> {
                     output = alignImages(prefix)
                     name = "aligned"
                 }
             }
+
+            if (mBinding.spinnerMode.isVisible) name += "_" + mBinding.spinnerMode.selectedItem.toString().toLowerCase(Locale.ROOT).replace(" ", "_")
+
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             l.invoke(output, name)
             BusyDialog.dismiss()
@@ -508,8 +555,23 @@ class MainActivity : AppCompatActivity() {
         mBinding.imageView.resetZoom()
     }
 
-    private fun showMergeModeParams() {
-        mBinding.paramsProjection.isVisible = MERGE_MODE_PANORAMA == mBinding.spinnerMergeMode.selectedItemPosition
+    private fun setMergeModes() {
+        val resourceId = when(mBinding.spinnerMerge.selectedItemPosition) {
+            MERGE_PANORAMA -> R.array.panorama_modes
+            MERGE_LONG_EXPOSURE -> R.array.longexposure_modes
+            else -> 0
+        }
+
+        if (0 == resourceId) {
+            mBinding.paramsProjection.isVisible = false
+            return
+        }
+
+        val adapter = ArrayAdapter.createFromResource(this, resourceId, android.R.layout.simple_spinner_item)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        mBinding.spinnerMode.adapter = adapter
+        mBinding.spinnerMode.setSelection(0)
+        mBinding.paramsProjection.isVisible = true
     }
 
     private fun onPermissionsAllowed() {
@@ -517,32 +579,23 @@ class MainActivity : AppCompatActivity() {
         System.loadLibrary("native-lib")
 
         setContentView(mBinding.root)
+        mBinding.spinnerMerge.setSelection(0)
 
-        try {
-            mBinding.spinnerProjection.setSelection(mSettings.panoramaMode)
-        } catch (e: Exception) {
-        }
-
-        showMergeModeParams()
-
-        mBinding.spinnerProjection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        mBinding.spinnerMode.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
                 val inputImages = mCache[CACHE_IMAGES_SMALL]
                 if (null != inputImages && inputImages.size >= 2) {
                     mergePhotosSmall()
                 }
-
-                mSettings.panoramaMode = mBinding.spinnerProjection.selectedItemPosition
-                mSettings.saveProperties()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
             }
         }
 
-        mBinding.spinnerMergeMode.onItemSelectedListener = object  : AdapterView.OnItemSelectedListener {
+        mBinding.spinnerMerge.onItemSelectedListener = object  : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
-                showMergeModeParams()
+                setMergeModes()
 
                 val inputImages = mCache[CACHE_IMAGES_SMALL]
                 if (null != inputImages && inputImages.size >= 2) {
