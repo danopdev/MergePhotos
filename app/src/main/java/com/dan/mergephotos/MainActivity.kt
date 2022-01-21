@@ -486,7 +486,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            if (mBinding.spinnerMode.isVisible) name += "_" + mBinding.spinnerMode.selectedItem.toString().toLowerCase(Locale.ROOT).replace(" ", "_")
+            if (mBinding.modeSection.isVisible) name += "_" + mBinding.spinnerMode.selectedItem.toString().toLowerCase(Locale.ROOT).replace(" ", "_")
 
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             l.invoke(output, name)
@@ -563,7 +563,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (0 == resourceId) {
-            mBinding.paramsProjection.isVisible = false
+            mBinding.modeSection.isVisible = false
             return
         }
 
@@ -571,7 +571,7 @@ class MainActivity : AppCompatActivity() {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         mBinding.spinnerMode.adapter = adapter
         mBinding.spinnerMode.setSelection(0)
-        mBinding.paramsProjection.isVisible = true
+        mBinding.modeSection.isVisible = true
     }
 
     private fun onPermissionsAllowed() {
