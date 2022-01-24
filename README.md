@@ -8,8 +8,9 @@ Internaly it uses OpenCL.
 * [HDR](#hdr)
 * [Long Exposure](#long-exposure)
 
-[Experiments](#experiments):
+[Ideas](#ideas):
 * [Inpaint](#inpaint)
+* [Long exposure improuvements](#long-exposure-improuvements)
 
 ## Panorama ##
 
@@ -64,7 +65,7 @@ Average | Nearest to Average | Farthest from Average
 <img src="examples/longexposure/1_longexposure_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_nearest_to_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_farthest_from_average.jpg" height="200px"/>
 
 
-# Experiments #
+# Ideas #
 
 ## Inpaint ##
 
@@ -86,3 +87,9 @@ From my point of view:
 * NS: looks OK and the time is decent
 * TELEA: doesn't look great
 * FSR (FAST & BEST): are too slow
+
+## Long exposure improuvements ##
+
+If you capture 2-3 images of a waterfall the water don't look blurry enought.
+Try to add some blur / motion blur on areas that are different.
+(I Need so take some interesting shots first.)
