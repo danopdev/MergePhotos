@@ -8,6 +8,9 @@ Internaly it uses OpenCL.
 * [HDR](#hdr)
 * [Long Exposure](#long-exposure)
 
+[Experiments](#experiments):
+* [Inpaint](#inpaint)
+
 ## Panorama ##
 
 Needs minimum 2 photos.
@@ -59,3 +62,27 @@ Input Image 1 | Input Image 2 | Input Image 3
 Average | Nearest to Average | Farthest from Average
 --- | --- | ---
 <img src="examples/longexposure/1_longexposure_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_nearest_to_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_farthest_from_average.jpg" height="200px"/>
+
+
+# Experiments #
+
+## Inpaint ##
+
+When creating panoramas the result images have black borders.
+
+Panorama | Mask
+--- | ---
+<img src="examples/inpaint/panorama.jpg" height="150px"/> | <img src="examples/inpaint/mask.png" height="150px"/>
+
+I tested opencv / opencv_contrib to fill this areas (the time it took is on my laptop not on adroid device):
+
+Inpaint NS | Inpaint TELEA | xphoto::inpaint SHIFTMAP | xphoto::inpaint FSR FAST | xphoto::inpaint FSR BEST
+--- | --- | --- | --- | ---
+4.57 seconds | 4.04 seconds | 22.68 seconds | 190.09 seconds | 3086.39 seconds
+<img src="examples/inpaint/inpaint_ns.jpg" height="120px"/> | <img src="examples/inpaint/inpaint_telea.jpg" height="120px"/> | <img src="examples/inpaint/inpaint_shiftmap.jpg" height="120px"/> | <img src="examples/inpaint/inpaint_fsr_fast.jpg" height="120px"/> | <img src="examples/inpaint/inpaint_fsr_best.jpg" height="120px"/>
+
+From my point of view:
+* SHIFTMAP: looks the best (at leat for my test images) but seems a little too slow for a android (to be tested)
+* NS: looks OK and the time is decent
+* TELEA: doesn't look great
+* FSR (FAST & BEST): are too slow
