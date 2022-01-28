@@ -76,13 +76,17 @@ Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv *
 JNIEXPORT jboolean JNICALL
 Java_com_dan_mergephotos_MainActivity_00024Companion_makeLongExposureMergeWithDistanceNative(
         JNIEnv *env, jobject thiz, jlong images_nativeObj, jlong averageImage_nativeObj, jlong outputImage_nativeObj,
-        jboolean nearest) {
+        jint farthestThreshold) {
 
     std::vector<Mat> images;
     Mat &imagesAsMat = *((Mat *) images_nativeObj);
     Mat_to_vector_Mat(imagesAsMat, images);
     Mat &averageImage = *((Mat *) averageImage_nativeObj);
     Mat &outputImage = *((Mat *) outputImage_nativeObj);
+
+    if (farthestThreshold < 0) {
+        farthestThreshold = INT_MAX;
+    }
 
     if (averageImage.empty() || !averageImage.isContinuous() || averageImage.size.dims() != 2 || averageImage.type() != CV_8UC3) return false;
 
@@ -101,22 +105,28 @@ Java_com_dan_mergephotos_MainActivity_00024Companion_makeLongExposureMergeWithDi
 
     for (int row = 0; row < averageImage.rows; row++) {
         for (int col = 0; col < averageImage.cols; col++, meanImageIt++, outputImageIt++) {
-            const Point3uint8* bestImageIt = meanImageIt;
-            unsigned int bestDelta = UINT_MAX;
+            const Point3uint8* nearestImageIt = meanImageIt;
+            const Point3uint8* farthestImageIt = meanImageIt;
+            unsigned int nearestDelta = UINT_MAX;
+            unsigned int farthestDelta = 0;
 
             for (auto& imageIt: imageIterators) {
                 unsigned int delta = calculateColorDelta(meanImageIt, imageIt);
-                if (bestDelta == UINT_MAX
-                    || (nearest && bestDelta > delta)
-                    || (!nearest && bestDelta < delta)) {
-                    bestDelta = delta;
-                    bestImageIt = imageIt;
+
+                if (nearestDelta > delta) {
+                    nearestDelta = delta;
+                    nearestImageIt = imageIt;
                 }
-                bestImageIt = bestImageIt;
+
+                if (farthestDelta < delta) {
+                    farthestDelta = delta;
+                    farthestImageIt = imageIt;
+                }
+
                 imageIt++;
             }
 
-            *outputImageIt = *bestImageIt;
+            *outputImageIt = (farthestDelta >= farthestThreshold) ?  *farthestImageIt : *nearestImageIt;
         }
     }
 

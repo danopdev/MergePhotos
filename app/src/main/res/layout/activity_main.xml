@@ -62,24 +62,38 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            tools:visibility="gone">
+            android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Algorithm:"
-                android:textColor="@color/black"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <Spinner
-                android:id="@+id/longexposureAlgorithm"
-                android:layout_width="0dp"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Algorithm:"
+                    android:textColor="@color/black"
+                    android:textStyle="bold" />
+
+                <Spinner
+                    android:id="@+id/longexposureAlgorithm"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:entries="@array/longexposure_algorithms"
+                    android:spinnerMode="dropdown" />
+            </LinearLayout>
+
+            <SeekBar
+                android:id="@+id/longexposureFarthestThreshold"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:entries="@array/longexposure_algorithms"
-                android:spinnerMode="dropdown" />
+                android:max="200"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp" />
+
         </LinearLayout>
 
         <com.ortiz.touchview.TouchImageView

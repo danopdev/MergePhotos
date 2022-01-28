@@ -15,6 +15,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -74,26 +75,30 @@ class MainActivity : AppCompatActivity() {
             return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, projection)
         }
 
-        fun makeLongExposureMergeWithDistance(images: List<Mat>, averageImage: Mat, outputImage: Mat, nearest: Boolean): Boolean {
+        fun makeLongExposureMergeWithDistance(images: List<Mat>, averageImage: Mat, outputImage: Mat, farthestThreshold: Int): Boolean {
             if (images.size < 3) return false
             val imagesMat = Converters.vector_Mat_to_Mat(images)
-            return makeLongExposureMergeWithDistanceNative(imagesMat.nativeObj, averageImage.nativeObj, outputImage.nativeObj, nearest)
+            return makeLongExposureMergeWithDistanceNative(imagesMat.nativeObj, averageImage.nativeObj, outputImage.nativeObj, farthestThreshold)
         }
 
         external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
-        external fun makeLongExposureMergeWithDistanceNative(images: Long, averageImage: Long, outputImage: Long, nearest: Boolean): Boolean
+        external fun makeLongExposureMergeWithDistanceNative(images: Long, averageImage: Long, outputImage: Long, farthestThreshold: Int): Boolean
     }
 
     private val binding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val cache = mutableMapOf<String, MutableList<Mat>>()
     private var outputName = Settings.DEFAULT_NAME
 
-    private val listenerUpdateOnSelectionChange = object : AdapterView.OnItemSelectedListener {
+    private val listenerOnItemSelectedListener = object : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
             when(parent) {
                 binding.spinnerMerge -> {
                     binding.panoramaOptions.isVisible = MERGE_PANORAMA == position
                     binding.longexposureOptions.isVisible = MERGE_LONG_EXPOSURE == position
+                }
+
+                binding.longexposureAlgorithm -> {
+                    binding.longexposureFarthestThreshold.isVisible = binding.longexposureAlgorithm.selectedItemPosition == LONG_EXPOSURE_FARTHEST_FROM_AVERAGE
                 }
             }
 
@@ -101,6 +106,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onNothingSelected(parent: AdapterView<*>) {
+        }
+    }
+
+    private val listenerOnSeekBarChangeListener = object : SeekBar.OnSeekBarChangeListener {
+        override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+        }
+
+        override fun onStartTrackingTouch(p0: SeekBar?) {
+        }
+
+        override fun onStopTrackingTouch(p0: SeekBar?) {
+            mergePhotosSmall()
         }
     }
 
@@ -439,7 +456,9 @@ class MainActivity : AppCompatActivity() {
                     val alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
                     if (null != alignedImages) {
                         val outputImage = Mat()
-                        if (makeLongExposureMergeWithDistance(alignedImages, averageImages[0], outputImage, LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode)) {
+                        val farthestThreshold = if (LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode) -1 else binding.longexposureFarthestThreshold.progress
+
+                        if (makeLongExposureMergeWithDistance(alignedImages, averageImages[0], outputImage, farthestThreshold)) {
                             if (!outputImage.empty()) {
                                 resultImages = listOf(outputImage)
                             }
@@ -566,8 +585,9 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(binding.root)
 
-        binding.spinnerMerge.onItemSelectedListener = listenerUpdateOnSelectionChange
-        binding.panoramaProjection.onItemSelectedListener = listenerUpdateOnSelectionChange
-        binding.longexposureAlgorithm.onItemSelectedListener = listenerUpdateOnSelectionChange
+        binding.spinnerMerge.onItemSelectedListener = listenerOnItemSelectedListener
+        binding.panoramaProjection.onItemSelectedListener = listenerOnItemSelectedListener
+        binding.longexposureAlgorithm.onItemSelectedListener = listenerOnItemSelectedListener
+        binding.longexposureFarthestThreshold.setOnSeekBarChangeListener( listenerOnSeekBarChangeListener )
     }
 }
