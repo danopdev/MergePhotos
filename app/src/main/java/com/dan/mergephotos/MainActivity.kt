@@ -52,15 +52,6 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_OPEN_IMAGES = 2
 
-        const val MERGE_PANORAMA = 0
-        const val MERGE_LONG_EXPOSURE = 1
-        const val MERGE_HDR = 2
-        const val MERGE_ALIGN = 3
-
-        const val LONG_EXPOSURE_AVERAGE = 0
-        const val LONG_EXPOSURE_NEAREST_TO_AVERAGE = 1
-        const val LONG_EXPOSURE_FARTHEST_FROM_AVERAGE = 2
-
         const val CACHE_IMAGES = "Big"
         const val CACHE_IMAGES_SMALL = "Small"
         const val CACHE_IMAGES_ALIGNED_SUFFIX = ".Aligned"
@@ -86,6 +77,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val binding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
+    private val settings: Settings by lazy { Settings(this) }
     private val cache = mutableMapOf<String, MutableList<Mat>>()
     private var outputName = Settings.DEFAULT_NAME
 
@@ -93,12 +85,12 @@ class MainActivity : AppCompatActivity() {
         override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
             when(parent) {
                 binding.spinnerMerge -> {
-                    binding.panoramaOptions.isVisible = MERGE_PANORAMA == position
-                    binding.longexposureOptions.isVisible = MERGE_LONG_EXPOSURE == position
+                    binding.panoramaOptions.isVisible = Settings.MERGE_PANORAMA == position
+                    binding.longexposureOptions.isVisible = Settings.MERGE_LONG_EXPOSURE == position
                 }
 
                 binding.longexposureAlgorithm -> {
-                    binding.longexposureFarthestThreshold.isVisible = binding.longexposureAlgorithm.selectedItemPosition == LONG_EXPOSURE_FARTHEST_FROM_AVERAGE
+                    binding.longexposureFarthestThreshold.isVisible = binding.longexposureAlgorithm.selectedItemPosition == Settings.LONG_EXPOSURE_FARTHEST_FROM_AVERAGE
                 }
             }
 
@@ -449,14 +441,14 @@ class MainActivity : AppCompatActivity() {
         var resultImages: List<Mat> = listOf()
 
         when(mode) {
-            LONG_EXPOSURE_AVERAGE -> resultImages = averageImages
+            Settings.LONG_EXPOSURE_AVERAGE -> resultImages = averageImages
 
-            LONG_EXPOSURE_NEAREST_TO_AVERAGE, LONG_EXPOSURE_FARTHEST_FROM_AVERAGE -> {
+            Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE, Settings.LONG_EXPOSURE_FARTHEST_FROM_AVERAGE -> {
                 if (!averageImages.isEmpty()) {
                     val alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
                     if (null != alignedImages) {
                         val outputImage = Mat()
-                        val farthestThreshold = if (LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode) -1 else binding.longexposureFarthestThreshold.progress
+                        val farthestThreshold = if (Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode) -1 else binding.longexposureFarthestThreshold.progress
 
                         if (makeLongExposureMergeWithDistance(alignedImages, averageImages[0], outputImage, farthestThreshold)) {
                             if (!outputImage.empty()) {
@@ -496,16 +488,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mergePhotos(prefix: String, l: (output: List<Mat>, name: String) -> Unit) {
+        val inputImages = cache[prefix]
+        if (null == inputImages || inputImages.size < 2) return
+
         BusyDialog.show(supportFragmentManager, "Merging photos ...")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val merge = binding.spinnerMerge.selectedItemPosition
 
         runFakeAsync {
             val result: Pair<List<Mat>, String> = when(merge) {
-                MERGE_PANORAMA -> mergePanorama(prefix)
-                MERGE_LONG_EXPOSURE -> mergeLongExposure(prefix)
-                MERGE_HDR -> mergeHdr(prefix)
-                MERGE_ALIGN -> alignImages(prefix)
+                Settings.MERGE_PANORAMA -> mergePanorama(prefix)
+                Settings.MERGE_LONG_EXPOSURE -> mergeLongExposure(prefix)
+                Settings.MERGE_HDR -> mergeHdr(prefix)
+                Settings.MERGE_ALIGN -> alignImages(prefix)
                 else -> Pair(listOf(), "")
             }
 
@@ -516,9 +511,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mergePhotosSmall() {
-        val inputImages = cache[CACHE_IMAGES_SMALL]
-        if (null == inputImages || inputImages.size < 2) return
-
         mergePhotos(CACHE_IMAGES_SMALL) { outputImages, _ ->
             if (outputImages.isEmpty()) {
                 setBitmap(null)
@@ -533,6 +525,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun mergePhotosBig() {
         mergePhotos(CACHE_IMAGES) { outputImages, name ->
+            settings.mergeMode = binding.spinnerMerge.selectedItemPosition
+            settings.panoramaProjection = binding.panoramaProjection.selectedItemPosition
+            settings.longexposureAlgorithm = binding.longexposureAlgorithm.selectedItemPosition
+            settings.saveProperties()
+
             BusyDialog.show(supportFragmentManager, "Saving")
 
             for (outputImage in outputImages) {
@@ -589,5 +586,9 @@ class MainActivity : AppCompatActivity() {
         binding.panoramaProjection.onItemSelectedListener = listenerOnItemSelectedListener
         binding.longexposureAlgorithm.onItemSelectedListener = listenerOnItemSelectedListener
         binding.longexposureFarthestThreshold.setOnSeekBarChangeListener( listenerOnSeekBarChangeListener )
+
+        binding.spinnerMerge.setSelection(settings.mergeMode)
+        binding.panoramaProjection.setSelection(settings.panoramaProjection)
+        binding.longexposureAlgorithm.setSelection(settings.longexposureAlgorithm)
     }
 }
