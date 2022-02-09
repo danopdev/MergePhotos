@@ -16,12 +16,12 @@ import org.opencv.utils.Converters;
 
 public class Core {
     // these constants are wrapped inside functions to prevent inlining
-    private static String getVersion() { return "4.5.2"; }
-    private static String getNativeLibraryName() { return "opencv_java452"; }
+    private static String getVersion() { return "4.5.5-dev"; }
+    private static String getNativeLibraryName() { return "opencv_java455"; }
     private static int getVersionMajorJ() { return 4; }
     private static int getVersionMinorJ() { return 5; }
-    private static int getVersionRevisionJ() { return 2; }
-    private static String getVersionStatusJ() { return ""; }
+    private static int getVersionRevisionJ() { return 5; }
+    private static String getVersionStatusJ() { return "-dev"; }
 
     public static final String VERSION = getVersion();
     public static final String NATIVE_LIBRARY_NAME = getNativeLibraryName();
@@ -2055,6 +2055,90 @@ public class Core {
 
 
     //
+    // C++:  void cv::reduceArgMin(Mat src, Mat& dst, int axis, bool lastIndex = false)
+    //
+
+    /**
+     * Finds indices of min elements along provided axis
+     *
+     * <b>Note:</b>
+     * - If input or output array is not continuous, this function will create an internal copy.
+     * - NaN handling is left unspecified, see patchNaNs().
+     * - The returned index is always in bounds of input matrix.
+     *
+     * @param src input single-channel array.
+     * @param dst output array of type CV_32SC1 with the same dimensionality as src,
+     * except for axis being reduced - it should be set to 1.
+     * @param lastIndex whether to get the index of first or last occurrence of min.
+     * @param axis axis to reduce along.
+     * SEE: reduceArgMax, minMaxLoc, min, max, compare, reduce
+     */
+    public static void reduceArgMin(Mat src, Mat dst, int axis, boolean lastIndex) {
+        reduceArgMin_0(src.nativeObj, dst.nativeObj, axis, lastIndex);
+    }
+
+    /**
+     * Finds indices of min elements along provided axis
+     *
+     * <b>Note:</b>
+     * - If input or output array is not continuous, this function will create an internal copy.
+     * - NaN handling is left unspecified, see patchNaNs().
+     * - The returned index is always in bounds of input matrix.
+     *
+     * @param src input single-channel array.
+     * @param dst output array of type CV_32SC1 with the same dimensionality as src,
+     * except for axis being reduced - it should be set to 1.
+     * @param axis axis to reduce along.
+     * SEE: reduceArgMax, minMaxLoc, min, max, compare, reduce
+     */
+    public static void reduceArgMin(Mat src, Mat dst, int axis) {
+        reduceArgMin_1(src.nativeObj, dst.nativeObj, axis);
+    }
+
+
+    //
+    // C++:  void cv::reduceArgMax(Mat src, Mat& dst, int axis, bool lastIndex = false)
+    //
+
+    /**
+     * Finds indices of max elements along provided axis
+     *
+     * <b>Note:</b>
+     * - If input or output array is not continuous, this function will create an internal copy.
+     * - NaN handling is left unspecified, see patchNaNs().
+     * - The returned index is always in bounds of input matrix.
+     *
+     * @param src input single-channel array.
+     * @param dst output array of type CV_32SC1 with the same dimensionality as src,
+     * except for axis being reduced - it should be set to 1.
+     * @param lastIndex whether to get the index of first or last occurrence of max.
+     * @param axis axis to reduce along.
+     * SEE: reduceArgMin, minMaxLoc, min, max, compare, reduce
+     */
+    public static void reduceArgMax(Mat src, Mat dst, int axis, boolean lastIndex) {
+        reduceArgMax_0(src.nativeObj, dst.nativeObj, axis, lastIndex);
+    }
+
+    /**
+     * Finds indices of max elements along provided axis
+     *
+     * <b>Note:</b>
+     * - If input or output array is not continuous, this function will create an internal copy.
+     * - NaN handling is left unspecified, see patchNaNs().
+     * - The returned index is always in bounds of input matrix.
+     *
+     * @param src input single-channel array.
+     * @param dst output array of type CV_32SC1 with the same dimensionality as src,
+     * except for axis being reduced - it should be set to 1.
+     * @param axis axis to reduce along.
+     * SEE: reduceArgMin, minMaxLoc, min, max, compare, reduce
+     */
+    public static void reduceArgMax(Mat src, Mat dst, int axis) {
+        reduceArgMax_1(src.nativeObj, dst.nativeObj, axis);
+    }
+
+
+    //
     // C++:  void cv::reduce(Mat src, Mat& dst, int dim, int rtype, int dtype = -1)
     //
 
@@ -2081,7 +2165,7 @@ public class Core {
      * @param rtype reduction operation that could be one of #ReduceTypes
      * @param dtype when negative, the output vector will have the same type as the input matrix,
      * otherwise, its type will be CV_MAKE_TYPE(CV_MAT_DEPTH(dtype), src.channels()).
-     * SEE: repeat
+     * SEE: repeat, reduceArgMin, reduceArgMax
      */
     public static void reduce(Mat src, Mat dst, int dim, int rtype, int dtype) {
         reduce_0(src.nativeObj, dst.nativeObj, dim, rtype, dtype);
@@ -2109,7 +2193,7 @@ public class Core {
      * a single row. 1 means that the matrix is reduced to a single column.
      * @param rtype reduction operation that could be one of #ReduceTypes
      * otherwise, its type will be CV_MAKE_TYPE(CV_MAT_DEPTH(dtype), src.channels()).
-     * SEE: repeat
+     * SEE: repeat, reduceArgMin, reduceArgMax
      */
     public static void reduce(Mat src, Mat dst, int dim, int rtype) {
         reduce_1(src.nativeObj, dst.nativeObj, dim, rtype);
@@ -5836,6 +5920,14 @@ public static MinMaxLocResult minMaxLoc(Mat src) {
     private static native void normalize_3(long src_nativeObj, long dst_nativeObj, double alpha, double beta);
     private static native void normalize_4(long src_nativeObj, long dst_nativeObj, double alpha);
     private static native void normalize_5(long src_nativeObj, long dst_nativeObj);
+
+    // C++:  void cv::reduceArgMin(Mat src, Mat& dst, int axis, bool lastIndex = false)
+    private static native void reduceArgMin_0(long src_nativeObj, long dst_nativeObj, int axis, boolean lastIndex);
+    private static native void reduceArgMin_1(long src_nativeObj, long dst_nativeObj, int axis);
+
+    // C++:  void cv::reduceArgMax(Mat src, Mat& dst, int axis, bool lastIndex = false)
+    private static native void reduceArgMax_0(long src_nativeObj, long dst_nativeObj, int axis, boolean lastIndex);
+    private static native void reduceArgMax_1(long src_nativeObj, long dst_nativeObj, int axis);
 
     // C++:  void cv::reduce(Mat src, Mat& dst, int dim, int rtype, int dtype = -1)
     private static native void reduce_0(long src_nativeObj, long dst_nativeObj, int dim, int rtype, int dtype);
