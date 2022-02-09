@@ -14,7 +14,6 @@ import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -76,8 +75,9 @@ class MainActivity : AppCompatActivity() {
         external fun makeLongExposureMergeWithDistanceNative(images: Long, averageImage: Long, outputImage: Long, farthestThreshold: Int): Boolean
     }
 
+    val settings: Settings by lazy { Settings(this) }
+
     private val binding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
-    private val settings: Settings by lazy { Settings(this) }
     private val cache = mutableMapOf<String, MutableList<Mat>>()
     private var outputName = Settings.DEFAULT_NAME
 
@@ -144,6 +144,11 @@ class MainActivity : AppCompatActivity() {
 
             R.id.save -> {
                 mergePhotosBig()
+                return true
+            }
+
+            R.id.settings -> {
+                SettingsDialog.show(this)
                 return true
             }
         }
@@ -530,22 +535,31 @@ class MainActivity : AppCompatActivity() {
             settings.longexposureAlgorithm = binding.longexposureAlgorithm.selectedItemPosition
             settings.saveProperties()
 
+            val outputExtension = settings.outputExtension()
+
             BusyDialog.show(supportFragmentManager, "Saving")
 
             for (outputImage in outputImages) {
                 try {
-                    var fileName = "${outputName}_${name}.png"
+                    var fileName = "${outputName}_${name}.${outputExtension}"
                     var fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                     var counter = 0
                     while (File(fileFullPath).exists() && counter < 998) {
                         counter++
                         val counterStr = "%03d".format(counter)
-                        fileName = "${outputName}_${name}_${counterStr}.png"
+                        fileName = "${outputName}_${name}_${counterStr}.${outputExtension}"
                         fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                     }
 
-                    val outputRGB = Mat()
+                    var outputRGB = Mat()
                     cvtColor(outputImage, outputRGB, COLOR_BGR2RGB)
+
+                    val support16BitsPerChannel = (Settings.OUTPUT_TYPE_PNG == settings.outputType || Settings.OUTPUT_TYPE_TIFF == settings.outputType)
+                    if (!support16BitsPerChannel && outputRGB.type() == CV_16UC3) {
+                        val outputRGB8 = Mat()
+                        outputRGB.convertTo(outputRGB8, CV_8UC3, 1.0 / 256.0)
+                        outputRGB = outputRGB8
+                    }
 
                     File(fileFullPath).parentFile?.mkdirs()
                     imwrite(fileFullPath, outputRGB)
@@ -555,7 +569,7 @@ class MainActivity : AppCompatActivity() {
                     val values = ContentValues()
                     @Suppress("DEPRECATION")
                     values.put(MediaStore.Images.Media.DATA, fileFullPath)
-                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/${outputExtension}")
                     contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
                 } catch (e: Exception) {
                     showToast("Failed to save")

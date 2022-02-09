@@ -26,11 +26,16 @@ class Settings( private val activity: Activity) {
         const val LONG_EXPOSURE_AVERAGE = 0
         const val LONG_EXPOSURE_NEAREST_TO_AVERAGE = 1
         const val LONG_EXPOSURE_FARTHEST_FROM_AVERAGE = 2
+
+        const val OUTPUT_TYPE_JPEG = 0
+        const val OUTPUT_TYPE_PNG = 1
+        const val OUTPUT_TYPE_TIFF = 2
     }
 
     var mergeMode: Int = MERGE_PANORAMA
     var panoramaProjection: Int = 0
     var longexposureAlgorithm: Int = LONG_EXPOSURE_AVERAGE
+    var outputType = OUTPUT_TYPE_PNG
 
     init {
         loadProperties()
@@ -73,5 +78,13 @@ class Settings( private val activity: Activity) {
         }
 
         editor.apply()
+    }
+
+    fun outputExtension() : String {
+        return when(outputType) {
+            OUTPUT_TYPE_PNG -> "png"
+            OUTPUT_TYPE_TIFF -> "tiff"
+            else -> "jpeg"
+        }
     }
 }
