@@ -1,5 +1,14 @@
 <resources>
     <string name="app_name">Merge Photos</string>
+    <string name="load_images">Load Images</string>
+    <string name="save">Save</string>
+    <string name="settings">Settings</string>
+    <string name="ok">OK</string>
+    <string name="ouput_format">Ouput format</string>
+    <string name="jpeg">Jpeg</string>
+    <string name="png">Png</string>
+    <string name="tiff">Tiff</string>
+    <string name="cancel">Cancel</string>
     <string-array name="merge_modes">
         <item>Panorama</item>
         <item>Long exposure</item>

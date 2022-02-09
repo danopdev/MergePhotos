@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
     <LinearLayout
@@ -23,7 +22,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:backgroundTint="#F44336"
-                android:text="Cancel"
+                android:text="@string/cancel"
                 android:textAllCaps="false" />
 
             <TextView
@@ -31,7 +30,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Settings"
+                android:text="@string/settings"
                 android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.AppCompat.Medium"
                 android:textColor="@color/black"
@@ -41,7 +40,7 @@
                 android:id="@+id/btnOK"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="OK"
+                android:text="@string/ok"
                 android:textAllCaps="false"
                 tools:text="OK" />
         </LinearLayout>
@@ -70,7 +69,7 @@
                     android:id="@+id/textView4"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Ouput format"
+                    android:text="@string/ouput_format"
                     android:textAppearance="@style/TextAppearance.AppCompat.Medium"
                     android:textColor="@color/black" />
 
@@ -78,19 +77,19 @@
                     android:id="@+id/radioJpeg"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Jpeg" />
+                    android:text="@string/jpeg" />
 
                 <RadioButton
                     android:id="@+id/radioPng"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Png" />
+                    android:text="@string/png" />
 
                 <RadioButton
                     android:id="@+id/radioTiff"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Tiff" />
+                    android:text="@string/tiff" />
 
             </RadioGroup>
         </ScrollView>

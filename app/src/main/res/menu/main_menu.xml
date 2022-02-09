@@ -5,16 +5,16 @@
     <item
         android:id="@+id/loadImages"
         android:icon="@android:drawable/ic_menu_gallery"
-        android:title="Load Images"
+        android:title="@string/load_images"
         app:showAsAction="always" />
     <item
         android:id="@+id/save"
         android:icon="@android:drawable/ic_menu_save"
-        android:title="Save"
+        android:title="@string/save"
         app:showAsAction="always" />
     <item
         android:id="@+id/settings"
         android:icon="@android:drawable/ic_menu_preferences"
-        android:title="Settings"
+        android:title="@string/settings"
         app:showAsAction="always" />
 </menu>
