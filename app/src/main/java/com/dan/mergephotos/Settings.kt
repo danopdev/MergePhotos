@@ -15,7 +15,7 @@ class Settings( private val activity: Activity) {
 
     companion object {
         const val SAVE_FOLDER = "/storage/emulated/0/Pictures/MergePhotos"
-        const val IMG_SIZE_SMALL = 512
+        const val IMG_SIZE_SMALL = 1024
         const val DEFAULT_NAME = "output"
 
         const val EXT_JPEG = "jpeg"
