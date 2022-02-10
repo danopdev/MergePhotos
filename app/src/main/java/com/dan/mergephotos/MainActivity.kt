@@ -459,7 +459,7 @@ class MainActivity : AppCompatActivity() {
                 val multiplyValue = 1.0 / alignedImages.size.toDouble()
                 multiply(floatMat, Scalar(multiplyValue, multiplyValue, multiplyValue), floatMat)
 
-                floatMat.convertTo(output, CV_8UC3)
+                floatMat.convertTo(output, alignedImages[0].type())
             }
 
             if (!output.empty()) averageImages.add(output)
