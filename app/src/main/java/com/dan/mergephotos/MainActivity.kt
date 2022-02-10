@@ -601,7 +601,14 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     File(fileFullPath).parentFile?.mkdirs()
-                    imwrite(fileFullPath, outputRGB)
+
+                    val outputParams = MatOfInt()
+
+                    if (Settings.OUTPUT_TYPE_JPEG == settings.outputType) {
+                        outputParams.fromArray( IMWRITE_JPEG_QUALITY, settings.jpegQuality )
+                    }
+
+                    imwrite(fileFullPath, outputRGB, outputParams)
                     showToast("Saved to: ${fileName}")
 
                     //Add it to gallery

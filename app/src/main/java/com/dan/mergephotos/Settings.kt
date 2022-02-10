@@ -18,6 +18,10 @@ class Settings( private val activity: Activity) {
         const val IMG_SIZE_SMALL = 512
         const val DEFAULT_NAME = "output"
 
+        const val EXT_JPEG = "jpeg"
+        const val EXT_PNG = "png"
+        const val EXT_TIFF = "tiff"
+
         const val MERGE_PANORAMA = 0
         const val MERGE_LONG_EXPOSURE = 1
         const val MERGE_HDR = 2
@@ -36,6 +40,7 @@ class Settings( private val activity: Activity) {
     var panoramaProjection: Int = 0
     var longexposureAlgorithm: Int = LONG_EXPOSURE_AVERAGE
     var outputType = OUTPUT_TYPE_PNG
+    var jpegQuality = 95
 
     init {
         loadProperties()
@@ -82,9 +87,9 @@ class Settings( private val activity: Activity) {
 
     fun outputExtension() : String {
         return when(outputType) {
-            OUTPUT_TYPE_PNG -> "png"
-            OUTPUT_TYPE_TIFF -> "tiff"
-            else -> "jpeg"
+            OUTPUT_TYPE_PNG -> EXT_PNG
+            OUTPUT_TYPE_TIFF -> EXT_TIFF
+            else -> EXT_JPEG
         }
     }
 }

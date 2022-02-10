@@ -60,40 +60,72 @@
             android:layout_height="wrap_content"
             android:layout_margin="10dp">
 
-            <RadioGroup
-                android:id="@+id/radioGroupOutputFormat"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/textView4"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/ouput_format"
                     android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-                    android:textColor="@color/black" />
+                    android:textColor="@color/black"
+                    android:textStyle="bold" />
 
-                <RadioButton
-                    android:id="@+id/radioJpeg"
+                <RadioGroup
+                    android:id="@+id/radioGroupOutputFormat"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/jpeg" />
+                    android:layout_height="wrap_content">
 
-                <RadioButton
-                    android:id="@+id/radioPng"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/png" />
+                    <RadioButton
+                        android:id="@+id/radioJpeg"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/jpeg" />
 
-                <RadioButton
-                    android:id="@+id/radioTiff"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/tiff" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="30dp">
 
-            </RadioGroup>
+                        <TextView
+                            android:id="@+id/txtJpegQuality"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:maxWidth="50dp"
+                            android:minWidth="50dp"
+                            android:text="95"
+                            android:textAlignment="center" />
+
+                        <SeekBar
+                            android:id="@+id/seekBarJpegQuality"
+                            style="@style/Widget.AppCompat.SeekBar.Discrete"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:max="8"
+                            android:progress="7" />
+                    </LinearLayout>
+
+                    <RadioButton
+                        android:id="@+id/radioPng"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/png" />
+
+                    <RadioButton
+                        android:id="@+id/radioTiff"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/tiff" />
+
+                </RadioGroup>
+            </LinearLayout>
         </ScrollView>
-
     </LinearLayout>
 
 </layout>
