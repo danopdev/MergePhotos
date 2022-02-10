@@ -5,7 +5,7 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -32,20 +32,19 @@ import org.opencv.core.Core.*
 import org.opencv.core.CvType.*
 import org.opencv.features2d.BFMatcher
 import org.opencv.features2d.ORB
-import org.opencv.imgcodecs.Imgcodecs.imwrite
+import org.opencv.imgcodecs.Imgcodecs.*
 import org.opencv.imgproc.Imgproc.*
 import org.opencv.photo.Photo.createMergeMertens
 import org.opencv.utils.Converters
 import java.io.File
-import java.util.*
 import kotlin.concurrent.timer
 
 
 class MainActivity : AppCompatActivity() {
     companion object {
         val PERMISSIONS = arrayOf(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
 
         const val REQUEST_PERMISSIONS = 1
@@ -65,14 +64,29 @@ class MainActivity : AppCompatActivity() {
             return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, projection)
         }
 
-        fun makeLongExposureMergeWithDistance(images: List<Mat>, averageImage: Mat, outputImage: Mat, farthestThreshold: Int): Boolean {
+        fun makeLongExposureMergeWithDistance(
+            images: List<Mat>,
+            averageImage: Mat,
+            outputImage: Mat,
+            farthestThreshold: Int
+        ): Boolean {
             if (images.size < 3) return false
             val imagesMat = Converters.vector_Mat_to_Mat(images)
-            return makeLongExposureMergeWithDistanceNative(imagesMat.nativeObj, averageImage.nativeObj, outputImage.nativeObj, farthestThreshold)
+            return makeLongExposureMergeWithDistanceNative(
+                imagesMat.nativeObj,
+                averageImage.nativeObj,
+                outputImage.nativeObj,
+                farthestThreshold
+            )
         }
 
         external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
-        external fun makeLongExposureMergeWithDistanceNative(images: Long, averageImage: Long, outputImage: Long, farthestThreshold: Int): Boolean
+        external fun makeLongExposureMergeWithDistanceNative(
+            images: Long,
+            averageImage: Long,
+            outputImage: Long,
+            farthestThreshold: Int
+        ): Boolean
     }
 
     val settings: Settings by lazy { Settings(this) }
@@ -90,7 +104,8 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 binding.longexposureAlgorithm -> {
-                    binding.longexposureFarthestThreshold.isVisible = binding.longexposureAlgorithm.selectedItemPosition == Settings.LONG_EXPOSURE_FARTHEST_FROM_AVERAGE
+                    binding.longexposureFarthestThreshold.isVisible =
+                        binding.longexposureAlgorithm.selectedItemPosition == Settings.LONG_EXPOSURE_FARTHEST_FROM_AVERAGE
                 }
             }
 
@@ -124,7 +139,11 @@ class MainActivity : AppCompatActivity() {
             onPermissionsAllowed()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         when (requestCode) {
             REQUEST_PERMISSIONS -> handleRequestPermissions(grantResults)
         }
@@ -174,7 +193,10 @@ class MainActivity : AppCompatActivity() {
                     for (i in 0 until count) {
                         try {
                             if (0 == i) {
-                                DocumentFile.fromSingleUri(applicationContext, clipData.getItemAt(i).uri)?.name?.let { name ->
+                                DocumentFile.fromSingleUri(
+                                    applicationContext,
+                                    clipData.getItemAt(i).uri
+                                )?.name?.let { name ->
                                     if (name.length > 0) {
                                         val fields = name.split('.')
                                         outputName = fields[0]
@@ -185,17 +207,9 @@ class MainActivity : AppCompatActivity() {
                         } catch (e: Exception) {
                         }
 
-                        try {
-                            contentResolver.openInputStream(clipData.getItemAt(i).uri)?.let { inputStream ->
-                                BitmapFactory.decodeStream(inputStream)?.let{ bitmap ->
-                                    loadBitmap(bitmap)?.let { images ->
-                                        imagesBig.add(images.first)
-                                        imagesSmall.add(images.second)
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                        }
+                        val image = loadImage(clipData.getItemAt(i).uri) ?: continue
+                        imagesBig.add(image)
+                        imagesSmall.add(createSmallImage(image))
                     }
                 }
 
@@ -286,35 +300,41 @@ class MainActivity : AppCompatActivity() {
         cache.clear()
     }
 
-    private fun bitmapToMat(bitmap: Bitmap): Mat {
-        val imgRGBA = Mat()
-        Utils.bitmapToMat(bitmap, imgRGBA)
-        if (imgRGBA.empty()) return imgRGBA
-        val img = Mat()
-        cvtColor(imgRGBA, img, COLOR_BGRA2BGR)
-        return img
-    }
-
-    private fun loadBitmap(bitmap: Bitmap) : Pair<Mat, Mat>? {
-        val img = bitmapToMat(bitmap)
-        log("Load OK")
-        if (img.empty()) return null
-
+    private fun createSmallImage(image: Mat) : Mat {
         val widthSmall: Int
         val heightSmall: Int
 
-        if (img.rows() < img.cols()) {
+        if (image.rows() < image.cols()) {
             widthSmall = Settings.IMG_SIZE_SMALL
-            heightSmall = Settings.IMG_SIZE_SMALL * img.rows() / img.cols()
+            heightSmall = Settings.IMG_SIZE_SMALL * image.rows() / image.cols()
         } else {
-            widthSmall = Settings.IMG_SIZE_SMALL * img.cols() / img.rows()
+            widthSmall = Settings.IMG_SIZE_SMALL * image.cols() / image.rows()
             heightSmall = Settings.IMG_SIZE_SMALL
         }
 
-        val imgSmall = Mat()
-        resize(img, imgSmall, Size(widthSmall.toDouble(), heightSmall.toDouble()))
+        if (image.cols() <= widthSmall && image.rows() <= heightSmall) return image
 
-        return Pair(img, imgSmall)
+        val imageSmall = Mat()
+        resize(image, imageSmall, Size(widthSmall.toDouble(), heightSmall.toDouble()))
+        return imageSmall
+    }
+
+    private fun loadImage(uri: Uri) : Mat? {
+        // Can't create MatOfByte from kotlin ByteArray, but works correctly from java byte[]
+        val image = OpenCVLoadImageFromUri.load(uri, contentResolver) ?: return null
+        if (image.empty()) return null
+
+        var imageBGA = Mat()
+
+        when(image.type()) {
+            CV_8UC3, CV_16UC3 -> imageBGA = image
+            CV_8UC4, CV_16UC4 -> cvtColor(image, imageBGA, COLOR_BGRA2BGR)
+            else -> return null
+        }
+
+        val imageRGB = Mat()
+        cvtColor(imageBGA, imageRGB, COLOR_BGR2RGB)
+        return imageRGB
     }
 
     private fun mergePanorama(prefix: String): Pair<List<Mat>, String> {
@@ -393,7 +413,11 @@ class MainActivity : AppCompatActivity() {
 
                 val homography = findHomography(matListPoints, matListRefPoints, RANSAC)
                 val alignedImage = Mat()
-                warpPerspective(inputImages[imageIndex], alignedImage, homography, Size(inputImages[0].cols().toDouble(), inputImages[0].rows().toDouble()))
+                warpPerspective(
+                    inputImages[imageIndex], alignedImage, homography, Size(
+                        inputImages[0].cols().toDouble(), inputImages[0].rows().toDouble()
+                    )
+                )
                 if (!alignedImage.empty()) alignedImages.add(alignedImage)
             }
 
@@ -453,9 +477,16 @@ class MainActivity : AppCompatActivity() {
                     val alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
                     if (null != alignedImages) {
                         val outputImage = Mat()
-                        val farthestThreshold = if (Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode) -1 else binding.longexposureFarthestThreshold.progress
+                        val farthestThreshold =
+                            if (Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode) -1 else binding.longexposureFarthestThreshold.progress
 
-                        if (makeLongExposureMergeWithDistance(alignedImages, averageImages[0], outputImage, farthestThreshold)) {
+                        if (makeLongExposureMergeWithDistance(
+                                alignedImages,
+                                averageImages[0],
+                                outputImage,
+                                farthestThreshold
+                            )
+                        ) {
                             if (!outputImage.empty()) {
                                 resultImages = listOf(outputImage)
                             }
@@ -466,7 +497,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         log("Long Exposure: ${if (resultImages.isEmpty()) "Failed" else "Success"}")
-        return Pair(resultImages, "longexposure_" + binding.longexposureAlgorithm.selectedItem.toString())
+        return Pair(
+            resultImages,
+            "longexposure_" + binding.longexposureAlgorithm.selectedItem.toString()
+        )
     }
 
     private fun mergeHdr(prefix: String): Pair<List<Mat>, String> {
@@ -521,7 +555,12 @@ class MainActivity : AppCompatActivity() {
                 setBitmap(null)
             } else {
                 val outputImage = outputImages[0]
-                val bitmap = Bitmap.createBitmap(outputImage.cols(), outputImage.rows(), Bitmap.Config.ARGB_8888)
+                val bitmap = Bitmap.createBitmap(
+                    outputImage.cols(),
+                    outputImage.rows(),
+                    Bitmap.Config.ARGB_8888
+                )
+
                 Utils.matToBitmap(outputImage, bitmap)
                 setBitmap(bitmap)
             }
@@ -599,7 +638,9 @@ class MainActivity : AppCompatActivity() {
         binding.spinnerMerge.onItemSelectedListener = listenerOnItemSelectedListener
         binding.panoramaProjection.onItemSelectedListener = listenerOnItemSelectedListener
         binding.longexposureAlgorithm.onItemSelectedListener = listenerOnItemSelectedListener
-        binding.longexposureFarthestThreshold.setOnSeekBarChangeListener( listenerOnSeekBarChangeListener )
+        binding.longexposureFarthestThreshold.setOnSeekBarChangeListener(
+            listenerOnSeekBarChangeListener
+        )
 
         binding.spinnerMerge.setSelection(settings.mergeMode)
         binding.panoramaProjection.setSelection(settings.panoramaProjection)
