@@ -351,6 +351,13 @@ class MainActivity : AppCompatActivity() {
     private fun toGrayImage(image: Mat): Mat {
         val grayMat = Mat()
         cvtColor(image, grayMat, COLOR_BGR2GRAY)
+
+        if (CV_16UC1 == grayMat.type()) {
+            val grayMat8 = Mat()
+            grayMat.convertTo(grayMat8, CV_8UC1, 1.0 / 256.0)
+            return grayMat8
+        }
+
         return grayMat
     }
 
