@@ -11,15 +11,59 @@
 using namespace cv;
 
 
-extern "C" {
-
-
 typedef Point3_<uchar> Point3uint8;
+typedef Point3_<ushort> Point3uint16;
 
 
-inline
-static unsigned int calculateColorDelta(const Point3uint8* a, const Point3uint8* b) {
+template<typename T>
+inline static unsigned int calculateColorDelta(const T* a, const T* b) {
     return abs(a->x - b->x) + abs(a->y - b->y) + abs(a->z - b->z);
+}
+
+
+template<typename T>
+static bool makeLongExposureMergeWithDistanceNative( std::vector<Mat> &images, const Mat &averageImage, Mat &outputImage, int farthestThreshold) {
+    const T *meanImageIt = averageImage.ptr<T>(0);
+    std::vector<const T*> imageIterators;
+
+    for (const auto image: images) {
+        if (!image.isContinuous() || image.size != averageImage.size || image.type() != averageImage.type() ) return false;
+        imageIterators.push_back(image.ptr<const T>(0));
+    }
+
+    outputImage.create(averageImage.rows, averageImage.cols, averageImage.type());
+    if (outputImage.empty()) return false;
+
+    T* outputImageIt = outputImage.ptr<T>(0);
+
+    for (int row = 0; row < averageImage.rows; row++) {
+        for (int col = 0; col < averageImage.cols; col++, meanImageIt++, outputImageIt++) {
+            const T* nearestImageIt = meanImageIt;
+            const T* farthestImageIt = meanImageIt;
+            unsigned int nearestDelta = UINT_MAX;
+            unsigned int farthestDelta = 0;
+
+            for (auto& imageIt: imageIterators) {
+                unsigned int delta = calculateColorDelta(meanImageIt, imageIt);
+
+                if (nearestDelta > delta) {
+                    nearestDelta = delta;
+                    nearestImageIt = imageIt;
+                }
+
+                if (farthestDelta < delta) {
+                    farthestDelta = delta;
+                    farthestImageIt = imageIt;
+                }
+
+                imageIt++;
+            }
+
+            *outputImageIt = (farthestDelta >= farthestThreshold) ?  *farthestImageIt : *nearestImageIt;
+        }
+    }
+
+    return true;
 }
 
 
@@ -37,6 +81,8 @@ void Mat_to_vector_Mat(cv::Mat &mat, std::vector<cv::Mat> &v_mat) {
     }
 }
 
+
+extern "C" {
 
 JNIEXPORT jboolean JNICALL
 Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv *env, jobject thiz,
@@ -88,49 +134,18 @@ Java_com_dan_mergephotos_MainActivity_00024Companion_makeLongExposureMergeWithDi
         farthestThreshold = INT_MAX;
     }
 
-    if (averageImage.empty() || !averageImage.isContinuous() || averageImage.size.dims() != 2 || averageImage.type() != CV_8UC3) return false;
+    if ( averageImage.empty()
+         || !averageImage.isContinuous()
+         || averageImage.size.dims() != 2
+         || !(averageImage.type() == CV_8UC3 || averageImage.type() == CV_16UC3))
+        return false;
 
-    const Point3uint8 *meanImageIt = averageImage.ptr<Point3uint8>(0);
-    std::vector<const Point3uint8*> imageIterators;
-
-    for (const auto image: images) {
-        if (!image.isContinuous() || image.size != averageImage.size || image.type() != averageImage.type() ) return false;
-        imageIterators.push_back(image.ptr<const Point3uint8>(0));
+    if ( CV_16UC3 == averageImage.type() ) {
+        if (farthestThreshold < INT_MAX) farthestThreshold *= 256;
+        return makeLongExposureMergeWithDistanceNative<Point3uint16>(images, averageImage, outputImage, farthestThreshold);
     }
 
-    outputImage.create(averageImage.rows, averageImage.cols, averageImage.type());
-    if (outputImage.empty()) return false;
-
-    Point3uint8* outputImageIt = outputImage.ptr<Point3uint8>(0);
-
-    for (int row = 0; row < averageImage.rows; row++) {
-        for (int col = 0; col < averageImage.cols; col++, meanImageIt++, outputImageIt++) {
-            const Point3uint8* nearestImageIt = meanImageIt;
-            const Point3uint8* farthestImageIt = meanImageIt;
-            unsigned int nearestDelta = UINT_MAX;
-            unsigned int farthestDelta = 0;
-
-            for (auto& imageIt: imageIterators) {
-                unsigned int delta = calculateColorDelta(meanImageIt, imageIt);
-
-                if (nearestDelta > delta) {
-                    nearestDelta = delta;
-                    nearestImageIt = imageIt;
-                }
-
-                if (farthestDelta < delta) {
-                    farthestDelta = delta;
-                    farthestImageIt = imageIt;
-                }
-
-                imageIt++;
-            }
-
-            *outputImageIt = (farthestDelta >= farthestThreshold) ?  *farthestImageIt : *nearestImageIt;
-        }
-    }
-
-    return true;
+    return makeLongExposureMergeWithDistanceNative<Point3uint8>(images, averageImage, outputImage, farthestThreshold);
 }
 
 }
