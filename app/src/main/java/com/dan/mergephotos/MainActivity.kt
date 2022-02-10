@@ -386,7 +386,7 @@ class MainActivity : AppCompatActivity() {
             alignedImages = mutableListOf()
 
             alignedImages.add(inputImages[0])
-            val orbDetector = ORB.create(5000)
+            val orbDetector = ORB.create()
             val matcher = BFMatcher.create(NORM_HAMMING, true)
             val refInfo = orbDetectAndCompute(orbDetector, inputImages[0])
             val refKeyPoints = refInfo.first
