@@ -568,7 +568,16 @@ class MainActivity : AppCompatActivity() {
                     Bitmap.Config.ARGB_8888
                 )
 
-                Utils.matToBitmap(outputImage, bitmap)
+                //make sure it's 8 bits per channel
+                var image8BitsPerChannel: Mat
+                if (CV_16UC3 == outputImage.type()) {
+                    image8BitsPerChannel = Mat()
+                    outputImage.convertTo(image8BitsPerChannel, CV_8UC3,1.0 / 256.0)
+                } else {
+                    image8BitsPerChannel = outputImage
+                }
+
+                Utils.matToBitmap(image8BitsPerChannel, bitmap)
                 setBitmap(bitmap)
             }
         }
