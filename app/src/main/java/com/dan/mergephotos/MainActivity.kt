@@ -456,10 +456,7 @@ class MainActivity : AppCompatActivity() {
                     add(floatMat, alignedImages[imageIndex], floatMat, Mat(), CV_32FC3)
                 }
 
-                val multiplyValue = 1.0 / alignedImages.size.toDouble()
-                multiply(floatMat, Scalar(multiplyValue, multiplyValue, multiplyValue), floatMat)
-
-                floatMat.convertTo(output, alignedImages[0].type())
+                floatMat.convertTo(output, alignedImages[0].type(), 1.0 / alignedImages.size.toDouble())
             }
 
             if (!output.empty()) averageImages.add(output)
@@ -522,8 +519,7 @@ class MainActivity : AppCompatActivity() {
             mergeMertens.process(alignedImages, hdrMat)
 
             if (!hdrMat.empty()) {
-                multiply(hdrMat, Scalar(255.0, 255.0, 255.0), hdrMat)
-                hdrMat.convertTo(output, CV_8UC3)
+                hdrMat.convertTo(output, alignedImages[0].type(), 255.0)
             }
         }
 
