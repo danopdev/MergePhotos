@@ -32,14 +32,18 @@ class SettingsDialog(private val activity: MainActivity ) : DialogFragment() {
         binding.radioTiff.isChecked = Settings.OUTPUT_TYPE_TIFF == activity.settings.outputType
         binding.radioJpeg.isChecked = ! (binding.radioPng.isChecked || binding.radioTiff.isChecked)
 
-        val jpegQuality = when {
+        val alignedJpegQuality = when {
             activity.settings.jpegQuality > 100 -> 100
             activity.settings.jpegQuality < JPEG_QUALITY_BASE -> JPEG_QUALITY_BASE
             else -> (activity.settings.jpegQuality / JPEG_QIALITY_TICK) * JPEG_QIALITY_TICK //round the value to tick size
         }
-        val jpegTick = (jpegQuality - JPEG_QUALITY_BASE) / JPEG_QIALITY_TICK
+        val jpegTick = (alignedJpegQuality - JPEG_QUALITY_BASE) / JPEG_QIALITY_TICK
         binding.seekBarJpegQuality.progress = jpegTick
-        binding.txtJpegQuality.text = jpegQuality.toString()
+        binding.txtJpegQuality.text = alignedJpegQuality.toString()
+
+        binding.spinnerPngDepth.setSelection(activity.settings.pngDepth)
+        binding.spinnerTiffDepth.setSelection(activity.settings.tiffDepth)
+        binding.spinnerEngineDepth.setSelection(activity.settings.engineDepth)
 
         binding.btnCancel.setOnClickListener { dismiss() }
 
@@ -49,6 +53,9 @@ class SettingsDialog(private val activity: MainActivity ) : DialogFragment() {
             else activity.settings.outputType = Settings.OUTPUT_TYPE_JPEG
 
             activity.settings.jpegQuality = JPEG_QUALITY_BASE + binding.seekBarJpegQuality.progress * JPEG_QIALITY_TICK
+            activity.settings.pngDepth = binding.spinnerPngDepth.selectedItemPosition
+            activity.settings.tiffDepth = binding.spinnerTiffDepth.selectedItemPosition
+            activity.settings.engineDepth = binding.spinnerEngineDepth.selectedItemPosition
 
             activity.settings.saveProperties()
             dismiss()

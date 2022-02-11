@@ -34,6 +34,10 @@ class Settings( private val activity: Activity) {
         const val OUTPUT_TYPE_JPEG = 0
         const val OUTPUT_TYPE_PNG = 1
         const val OUTPUT_TYPE_TIFF = 2
+
+        const val DEPTH_AUTO = 0
+        const val DEPTH_8_BITS = 1
+        const val DEPTH_16_BITS = 2
     }
 
     var mergeMode: Int = MERGE_PANORAMA
@@ -41,6 +45,9 @@ class Settings( private val activity: Activity) {
     var longexposureAlgorithm: Int = LONG_EXPOSURE_AVERAGE
     var outputType = OUTPUT_TYPE_PNG
     var jpegQuality = 95
+    var pngDepth = DEPTH_AUTO
+    var tiffDepth = DEPTH_AUTO
+    var engineDepth = DEPTH_AUTO
 
     init {
         loadProperties()

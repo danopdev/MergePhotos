@@ -5,6 +5,7 @@
     <string name="settings">Settings</string>
     <string name="ok">OK</string>
     <string name="ouput_format">Ouput format</string>
+    <string name="engine_options">Engine options</string>
     <string name="jpeg">Jpeg</string>
     <string name="png">Png</string>
     <string name="tiff">Tiff</string>
@@ -30,5 +31,10 @@
         <item>75</item>
         <item>90</item>
         <item>100</item>
+    </string-array>
+    <string-array name="depth">
+        <item>Auto</item>
+        <item>8 bits</item>
+        <item>16 bits</item>
     </string-array>
 </resources>

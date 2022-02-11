@@ -55,6 +55,9 @@ class MainActivity : AppCompatActivity() {
         const val CACHE_IMAGES_ALIGNED_SUFFIX = ".Aligned"
         const val CACHE_IMAGES_AVERAGE_SUFFIX = ".Average"
 
+        const val ALPHA_8_TO_16 = 256.0
+        const val ALPHA_16_TO_8 = 1.0 / ALPHA_8_TO_16
+
         private fun log(msg: String) {
             Log.i("MERGE", msg)
         }
@@ -189,6 +192,8 @@ class MainActivity : AppCompatActivity() {
             runFakeAsync {
                 data?.clipData?.let { clipData ->
                     val count = clipData.itemCount
+                    var has8BitsImages = false
+                    var has16BitsImages = false
 
                     for (i in 0 until count) {
                         try {
@@ -209,6 +214,18 @@ class MainActivity : AppCompatActivity() {
 
                         val image = loadImage(clipData.getItemAt(i).uri) ?: continue
                         imagesBig.add(image)
+
+                        if (CV_8UC3 == image.type()) has8BitsImages = true
+                        if (CV_16UC3 == image.type()) has16BitsImages = true
+                    }
+
+                    if (has8BitsImages && has16BitsImages) {
+                        for (i in 0 until imagesBig.size) {
+                            imagesBig[i] = convertToDepth(imagesBig[i], Settings.DEPTH_16_BITS)
+                        }
+                    }
+
+                    for (image in imagesBig) {
                         imagesSmall.add(createSmallImage(image))
                     }
                 }
@@ -319,22 +336,42 @@ class MainActivity : AppCompatActivity() {
         return imageSmall
     }
 
+    private fun convertToDepth( image: Mat, depth: Int ) : Mat {
+        when( depth ) {
+            Settings.DEPTH_8_BITS -> {
+                if (CV_16UC3 == image.type()) {
+                    val newImage = Mat()
+                    image.convertTo(newImage, CV_8UC3, ALPHA_16_TO_8)
+                    return newImage
+                }
+            }
+
+            Settings.DEPTH_16_BITS -> {
+                if (CV_8UC3 == image.type()) {
+                    val newImage = Mat()
+                    image.convertTo(newImage, CV_16UC3, ALPHA_8_TO_16)
+                    return newImage
+                }
+            }
+        }
+
+        return image
+    }
+
     private fun loadImage(uri: Uri) : Mat? {
         // Can't create MatOfByte from kotlin ByteArray, but works correctly from java byte[]
         val image = OpenCVLoadImageFromUri.load(uri, contentResolver) ?: return null
         if (image.empty()) return null
 
-        var imageBGA = Mat()
+        var imageRGB = Mat()
 
         when(image.type()) {
-            CV_8UC3, CV_16UC3 -> imageBGA = image
-            CV_8UC4, CV_16UC4 -> cvtColor(image, imageBGA, COLOR_BGRA2BGR)
+            CV_8UC3, CV_16UC3 -> cvtColor(image, imageRGB, COLOR_BGR2RGB)
+            CV_8UC4, CV_16UC4 -> cvtColor(image, imageRGB, COLOR_BGRA2RGB)
             else -> return null
         }
 
-        val imageRGB = Mat()
-        cvtColor(imageBGA, imageRGB, COLOR_BGR2RGB)
-        return imageRGB
+        return convertToDepth(imageRGB, settings.engineDepth)
     }
 
     private fun mergePanorama(prefix: String): Pair<List<Mat>, String> {
@@ -354,7 +391,7 @@ class MainActivity : AppCompatActivity() {
 
         if (CV_16UC1 == grayMat.type()) {
             val grayMat8 = Mat()
-            grayMat.convertTo(grayMat8, CV_8UC1, 1.0 / 256.0)
+            grayMat.convertTo(grayMat8, CV_8UC1, ALPHA_16_TO_8)
             return grayMat8
         }
 
@@ -568,7 +605,7 @@ class MainActivity : AppCompatActivity() {
                 var image8BitsPerChannel: Mat
                 if (CV_16UC3 == outputImage.type()) {
                     image8BitsPerChannel = Mat()
-                    outputImage.convertTo(image8BitsPerChannel, CV_8UC3,1.0 / 256.0)
+                    outputImage.convertTo(image8BitsPerChannel, CV_8UC3, ALPHA_16_TO_8)
                 } else {
                     image8BitsPerChannel = outputImage
                 }
@@ -602,14 +639,20 @@ class MainActivity : AppCompatActivity() {
                         fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
                     }
 
-                    var outputRGB = Mat()
+                    val outputRGB = Mat()
                     cvtColor(outputImage, outputRGB, COLOR_BGR2RGB)
 
-                    val support16BitsPerChannel = (Settings.OUTPUT_TYPE_PNG == settings.outputType || Settings.OUTPUT_TYPE_TIFF == settings.outputType)
-                    if (!support16BitsPerChannel && outputRGB.type() == CV_16UC3) {
-                        val outputRGB8 = Mat()
-                        outputRGB.convertTo(outputRGB8, CV_8UC3, 1.0 / 256.0)
-                        outputRGB = outputRGB8
+                    var outputDepth = Settings.DEPTH_AUTO
+
+                    if ( Settings.OUTPUT_TYPE_JPEG == settings.outputType
+                        || (Settings.OUTPUT_TYPE_PNG == settings.outputType && Settings.DEPTH_8_BITS == settings.pngDepth)
+                        || (Settings.OUTPUT_TYPE_TIFF == settings.outputType && Settings.DEPTH_8_BITS == settings.tiffDepth)
+                    ) {
+                        outputDepth = Settings.DEPTH_8_BITS
+                    } else if ( (Settings.OUTPUT_TYPE_PNG == settings.outputType && Settings.DEPTH_16_BITS == settings.pngDepth)
+                        || (Settings.OUTPUT_TYPE_TIFF == settings.outputType && Settings.DEPTH_16_BITS == settings.tiffDepth)
+                    ) {
+                        outputDepth = Settings.DEPTH_16_BITS
                     }
 
                     File(fileFullPath).parentFile?.mkdirs()
@@ -620,7 +663,7 @@ class MainActivity : AppCompatActivity() {
                         outputParams.fromArray( IMWRITE_JPEG_QUALITY, settings.jpegQuality )
                     }
 
-                    imwrite(fileFullPath, outputRGB, outputParams)
+                    imwrite(fileFullPath, convertToDepth(outputRGB, outputDepth), outputParams)
                     showToast("Saved to: ${fileName}")
 
                     //Add it to gallery

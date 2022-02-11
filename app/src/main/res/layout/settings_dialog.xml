@@ -46,7 +46,7 @@
         </LinearLayout>
 
         <View
-            android:id="@+id/divider2"
+            android:id="@+id/divider3"
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginStart="5dp"
@@ -90,7 +90,7 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingStart="30dp">
+                        android:paddingStart="32dp">
 
                         <TextView
                             android:id="@+id/txtJpegQuality"
@@ -117,13 +117,97 @@
                         android:layout_height="wrap_content"
                         android:text="@string/png" />
 
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="32dp">
+
+                        <TextView
+                            android:id="@+id/textView"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Depth:" />
+
+                        <Spinner
+                            android:id="@+id/spinnerPngDepth"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:entries="@array/depth" />
+                    </LinearLayout>
+
                     <RadioButton
                         android:id="@+id/radioTiff"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/tiff" />
 
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="32dp">
+
+                        <TextView
+                            android:id="@+id/textView5"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Depth:" />
+
+                        <Spinner
+                            android:id="@+id/spinnerTiffDepth"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:entries="@array/depth" />
+                    </LinearLayout>
+
                 </RadioGroup>
+
+                <View
+                    android:id="@+id/divider2"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="5dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginEnd="5dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@android:drawable/divider_horizontal_textfield" />
+
+                <TextView
+                    android:id="@+id/textView6"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="5dp"
+                    android:text="@string/engine_options"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                    android:textColor="@color/black"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="32dp">
+
+                    <TextView
+                        android:id="@+id/textView7"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Depth:" />
+
+                    <Spinner
+                        android:id="@+id/spinnerEngineDepth"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:entries="@array/depth" />
+                </LinearLayout>
+
             </LinearLayout>
         </ScrollView>
     </LinearLayout>
