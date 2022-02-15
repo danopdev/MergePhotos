@@ -7,6 +7,7 @@ Internaly it uses OpenCL.
 * [Aligned](#aligned)
 * [HDR](#hdr)
 * [Long Exposure](#long-exposure)
+* [Interpolation](#interpolation)
 
 [Ideas](#ideas):
 * [Inpaint](#inpaint)
@@ -64,6 +65,14 @@ Average | Nearest to Average | Farthest from Average
 --- | --- | ---
 <img src="examples/longexposure/1_longexposure_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_nearest_to_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_farthest_from_average.jpg" height="200px"/>
 
+
+## Interpolation ##
+
+Linear (default) | Cubic | Area | Lanczos4
+--- | --- | --- | ---
+<img src="examples/panorama/panorama_interp_linear_default.jpg" height="120px"> |  <img src="examples/panorama/panorama_interp_cubic.jpg" height="120px"> | <img src="examples/panorama/panorama_interp_area.jpg" height="120px"> | <img src="examples/panorama/panorama_interp_lanczos4.jpg" height="120px">
+
+Lanczos4 looks to be the sharpest so I will switch from default to this one.
 
 # Ideas #
 
