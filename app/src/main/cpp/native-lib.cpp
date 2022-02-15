@@ -85,7 +85,7 @@ void Mat_to_vector_Mat(cv::Mat &mat, std::vector<cv::Mat> &v_mat) {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv *env, jobject thiz,
+Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv */*env*/, jobject /*thiz*/,
                                                                 jlong images_nativeObj,
                                                                 jlong panorama_nativeObj,
                                                                 jint projection) {
@@ -97,6 +97,7 @@ Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv *
     Mat &panorama = *((Mat *) panorama_nativeObj);
 
     Ptr<Stitcher> stitcher = Stitcher::create(Stitcher::PANORAMA);
+    stitcher->setInterpolationFlags(INTER_LANCZOS4);
 
     switch (projection) {
         case 0:
@@ -121,7 +122,7 @@ Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv *
 
 JNIEXPORT jboolean JNICALL
 Java_com_dan_mergephotos_MainActivity_00024Companion_makeLongExposureMergeWithDistanceNative(
-        JNIEnv *env, jobject thiz, jlong images_nativeObj, jlong averageImage_nativeObj, jlong outputImage_nativeObj,
+        JNIEnv */*env*/, jobject /*thiz*/, jlong images_nativeObj, jlong averageImage_nativeObj, jlong outputImage_nativeObj,
         jint farthestThreshold) {
 
     std::vector<Mat> images;

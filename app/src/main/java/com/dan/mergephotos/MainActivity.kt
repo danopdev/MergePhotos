@@ -363,7 +363,7 @@ class MainActivity : AppCompatActivity() {
         val image = OpenCVLoadImageFromUri.load(uri, contentResolver) ?: return null
         if (image.empty()) return null
 
-        var imageRGB = Mat()
+        val imageRGB = Mat()
 
         when(image.type()) {
             CV_8UC3, CV_16UC3 -> cvtColor(image, imageRGB, COLOR_BGR2RGB)
@@ -458,9 +458,9 @@ class MainActivity : AppCompatActivity() {
                 val homography = findHomography(matListPoints, matListRefPoints, RANSAC)
                 val alignedImage = Mat()
                 warpPerspective(
-                    inputImages[imageIndex], alignedImage, homography, Size(
-                        inputImages[0].cols().toDouble(), inputImages[0].rows().toDouble()
-                    )
+                    inputImages[imageIndex], alignedImage, homography,
+                    Size(inputImages[0].cols().toDouble(), inputImages[0].rows().toDouble()),
+                    INTER_LANCZOS4
                 )
                 if (!alignedImage.empty()) alignedImages.add(alignedImage)
             }
@@ -602,7 +602,7 @@ class MainActivity : AppCompatActivity() {
                 )
 
                 //make sure it's 8 bits per channel
-                var image8BitsPerChannel: Mat
+                val image8BitsPerChannel: Mat
                 if (CV_16UC3 == outputImage.type()) {
                     image8BitsPerChannel = Mat()
                     outputImage.convertTo(image8BitsPerChannel, CV_8UC3, ALPHA_16_TO_8)
