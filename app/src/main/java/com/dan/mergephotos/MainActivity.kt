@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.os.Parcelable
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Menu
@@ -164,52 +165,65 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (resultCode == RESULT_OK && requestCode == INTENT_OPEN_IMAGES) {
-            imagesClear()
-            outputName = Settings.DEFAULT_NAME
-            BusyDialog.show(supportFragmentManager, "Loading images")
+            data?.clipData?.let { clipData ->
+                val uriList = mutableListOf<Uri>()
+                val count = clipData.itemCount
+                for (i in 0 until count) {
+                    uriList.add(clipData.getItemAt(i).uri)
+                }
 
-            val imagesBig = mutableListOf<Mat>()
-            val imagesSmall = mutableListOf<Mat>()
+                loadImages(uriList.toList())
+            }
+        }
+    }
 
-            runFakeAsync {
-                data?.clipData?.let { clipData ->
-                    val count = clipData.itemCount
-                    var has8BitsImages = false
-                    var has16BitsImages = false
+    private fun loadImages( uriList: List<Uri> ) {
+        imagesClear()
+        outputName = Settings.DEFAULT_NAME
+        BusyDialog.show(supportFragmentManager, "Loading images")
 
-                    for (i in 0 until count) {
-                        try {
-                            if (0 == i) {
-                                DocumentFile.fromSingleUri(
-                                    applicationContext,
-                                    clipData.getItemAt(i).uri
-                                )?.name?.let { name ->
-                                    if (name.length > 0) {
-                                        val fields = name.split('.')
-                                        outputName = fields[0]
-                                        log("Output name: ${outputName}")
-                                    }
-                                }
+        val imagesBig = mutableListOf<Mat>()
+        val imagesSmall = mutableListOf<Mat>()
+
+        runFakeAsync {
+            var nameFound = false
+            var has8BitsImages = false
+            var has16BitsImages = false
+
+            for (uri in uriList) {
+                val image = loadImage(uri) ?: continue
+
+                try {
+                    if (!nameFound) {
+                        DocumentFile.fromSingleUri( applicationContext, uri )?.name?.let { name ->
+                            if (name.length > 0) {
+                                nameFound = true
+                                val fields = name.split('.')
+                                outputName = fields[0]
+                                log("Output name: ${outputName}")
                             }
-                        } catch (e: Exception) {
-                        }
-
-                        val image = loadImage(clipData.getItemAt(i).uri) ?: continue
-                        imagesBig.add(image)
-
-                        if (CV_8UC3 == image.type()) has8BitsImages = true
-                        if (CV_16UC3 == image.type()) has16BitsImages = true
-                    }
-
-                    if (has8BitsImages && has16BitsImages) {
-                        for (i in 0 until imagesBig.size) {
-                            imagesBig[i] = convertToDepth(imagesBig[i], Settings.DEPTH_16_BITS)
                         }
                     }
+                } catch (e: Exception) {
+                }
 
-                    for (image in imagesBig) {
-                        imagesSmall.add(createSmallImage(image))
+                imagesBig.add(image)
+
+                if (CV_8UC3 == image.type()) has8BitsImages = true
+                if (CV_16UC3 == image.type()) has16BitsImages = true
+            }
+
+            if (imagesBig.size < 2) {
+                showNotEnoughImagesToast()
+            } else {
+                if (has8BitsImages && has16BitsImages) {
+                    for (i in 0 until imagesBig.size) {
+                        imagesBig[i] = convertToDepth(imagesBig[i], Settings.DEPTH_16_BITS)
                     }
+                }
+
+                for (image in imagesBig) {
+                    imagesSmall.add(createSmallImage(image))
                 }
 
                 if (imagesBig.size < 2) {
@@ -219,9 +233,9 @@ class MainActivity : AppCompatActivity() {
                     cache[CACHE_IMAGES_SMALL] = imagesSmall
                     mergePhotosSmall()
                 }
-
-               BusyDialog.dismiss()
             }
+
+            BusyDialog.dismiss()
         }
     }
 
@@ -683,5 +697,13 @@ class MainActivity : AppCompatActivity() {
         binding.spinnerMerge.setSelection( if (settings.mergeMode >= binding.spinnerMerge.adapter.count) 0 else settings.mergeMode )
         binding.panoramaProjection.setSelection( if (settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else settings.panoramaProjection )
         binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
+
+        if (intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true) {
+            intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { list ->
+                val uriList = mutableListOf<Uri>()
+                list.forEach { uriList.add( it as Uri ) }
+                loadImages( uriList.toList() )
+            }
+        }
     }
 }
