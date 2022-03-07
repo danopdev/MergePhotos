@@ -69,28 +69,25 @@ class MainActivity : AppCompatActivity() {
             return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, projection)
         }
 
-        fun makeLongExposureMergeWithDistance(
+        fun makeLongExposureNearest(
             images: List<Mat>,
             averageImage: Mat,
-            outputImage: Mat,
-            farthestThreshold: Int
+            outputImage: Mat
         ): Boolean {
             if (images.size < 3) return false
             val imagesMat = Converters.vector_Mat_to_Mat(images)
-            return makeLongExposureMergeWithDistanceNative(
+            return makeLongExposureNearestNative(
                 imagesMat.nativeObj,
                 averageImage.nativeObj,
-                outputImage.nativeObj,
-                farthestThreshold
+                outputImage.nativeObj
             )
         }
 
         external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
-        external fun makeLongExposureMergeWithDistanceNative(
+        external fun makeLongExposureNearestNative(
             images: Long,
             averageImage: Long,
-            outputImage: Long,
-            farthestThreshold: Int
+            outputImage: Long
         ): Boolean
     }
 
@@ -106,11 +103,6 @@ class MainActivity : AppCompatActivity() {
                 binding.spinnerMerge -> {
                     binding.panoramaOptions.isVisible = Settings.MERGE_PANORAMA == position
                     binding.longexposureOptions.isVisible = Settings.MERGE_LONG_EXPOSURE == position
-                }
-
-                binding.longexposureAlgorithm -> {
-                    binding.longexposureFarthestThreshold.isVisible =
-                        binding.longexposureAlgorithm.selectedItemPosition == Settings.LONG_EXPOSURE_FARTHEST_FROM_AVERAGE
                 }
             }
 
@@ -515,19 +507,16 @@ class MainActivity : AppCompatActivity() {
         when(mode) {
             Settings.LONG_EXPOSURE_AVERAGE -> resultImages = averageImages
 
-            Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE, Settings.LONG_EXPOSURE_FARTHEST_FROM_AVERAGE -> {
+            Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE -> {
                 if (!averageImages.isEmpty()) {
                     val alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
                     if (null != alignedImages) {
                         val outputImage = Mat()
-                        val farthestThreshold =
-                            if (Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode) -1 else binding.longexposureFarthestThreshold.progress
 
-                        if (makeLongExposureMergeWithDistance(
+                        if (makeLongExposureNearest(
                                 alignedImages,
                                 averageImages[0],
-                                outputImage,
-                                farthestThreshold
+                                outputImage
                             )
                         ) {
                             if (!outputImage.empty()) {
@@ -702,9 +691,6 @@ class MainActivity : AppCompatActivity() {
         binding.spinnerMerge.onItemSelectedListener = listenerOnItemSelectedListener
         binding.panoramaProjection.onItemSelectedListener = listenerOnItemSelectedListener
         binding.longexposureAlgorithm.onItemSelectedListener = listenerOnItemSelectedListener
-        binding.longexposureFarthestThreshold.setOnSeekBarChangeListener(
-            listenerOnSeekBarChangeListener
-        )
 
         binding.spinnerMerge.setSelection( if (settings.mergeMode >= binding.spinnerMerge.adapter.count) 0 else settings.mergeMode )
         binding.panoramaProjection.setSelection( if (settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else settings.panoramaProjection )

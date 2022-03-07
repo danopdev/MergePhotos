@@ -29,7 +29,6 @@ class Settings( private val activity: Activity) {
 
         const val LONG_EXPOSURE_AVERAGE = 0
         const val LONG_EXPOSURE_NEAREST_TO_AVERAGE = 1
-        const val LONG_EXPOSURE_FARTHEST_FROM_AVERAGE = 2
 
         const val OUTPUT_TYPE_JPEG = 0
         const val OUTPUT_TYPE_PNG = 1
