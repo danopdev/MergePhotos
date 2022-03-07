@@ -1,3 +1,4 @@
+
 package com.dan.mergephotos
 
 import android.Manifest
@@ -38,6 +39,7 @@ import org.opencv.photo.Photo.createMergeMertens
 import org.opencv.utils.Converters
 import java.io.File
 import kotlin.concurrent.timer
+import kotlin.math.min
 
 
 class MainActivity : AppCompatActivity() {
@@ -704,8 +706,8 @@ class MainActivity : AppCompatActivity() {
             listenerOnSeekBarChangeListener
         )
 
-        binding.spinnerMerge.setSelection(settings.mergeMode)
-        binding.panoramaProjection.setSelection(settings.panoramaProjection)
-        binding.longexposureAlgorithm.setSelection(settings.longexposureAlgorithm)
+        binding.spinnerMerge.setSelection( if (settings.mergeMode >= binding.spinnerMerge.adapter.count) 0 else settings.mergeMode )
+        binding.panoramaProjection.setSelection( if (settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else settings.panoramaProjection )
+        binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
     }
 }
