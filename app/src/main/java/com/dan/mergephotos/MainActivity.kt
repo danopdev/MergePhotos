@@ -16,7 +16,6 @@ import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
-import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -40,7 +39,6 @@ import org.opencv.photo.Photo.createMergeMertens
 import org.opencv.utils.Converters
 import java.io.File
 import kotlin.concurrent.timer
-import kotlin.math.min
 
 
 class MainActivity : AppCompatActivity() {
@@ -97,6 +95,7 @@ class MainActivity : AppCompatActivity() {
     private val binding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val cache = mutableMapOf<String, MutableList<Mat>>()
     private var outputName = Settings.DEFAULT_NAME
+    private var firstSourceUri: Uri? = null
 
     private val listenerOnItemSelectedListener = object : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
@@ -180,6 +179,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadImages( uriList: List<Uri> ) {
         imagesClear()
         outputName = Settings.DEFAULT_NAME
+        firstSourceUri = null
         BusyDialog.show(supportFragmentManager, "Loading images")
 
         val imagesBig = mutableListOf<Mat>()
@@ -192,6 +192,7 @@ class MainActivity : AppCompatActivity() {
 
             for (uri in uriList) {
                 val image = loadImage(uri) ?: continue
+                if (null == firstSourceUri) firstSourceUri = uri
 
                 try {
                     if (!nameFound) {
@@ -657,7 +658,11 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     imwrite(fileFullPath, convertToDepth(outputRGB, outputDepth), outputParams)
-                    showToast("Saved to: ${fileName}")
+
+                    //copy exif tags
+                    firstSourceUri?.let { uri ->
+                        ExifTools.copyExif( contentResolver, uri, fileFullPath )
+                    }
 
                     //Add it to gallery
                     val values = ContentValues()
@@ -665,6 +670,8 @@ class MainActivity : AppCompatActivity() {
                     values.put(MediaStore.Images.Media.DATA, fileFullPath)
                     values.put(MediaStore.Images.Media.MIME_TYPE, "image/${outputExtension}")
                     contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+
+                    showToast("Saved to: ${fileName}")
                 } catch (e: Exception) {
                     showToast("Failed to save")
                 }
