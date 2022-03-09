@@ -1,11 +1,7 @@
 #include <jni.h>
 #include <string>
 #include <vector>
-#include <android/log.h>
 #include "opencv2/stitching.hpp"
-
-
-#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,"MERGE",__VA_ARGS__)
 
 
 using namespace cv;
