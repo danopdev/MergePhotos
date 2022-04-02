@@ -24,7 +24,6 @@
     <string-array name="longexposure_algorithms">
         <item>Average</item>
         <item>Nearest to Average</item>
-        <item>Farthest from Average</item>
     </string-array>
     <string-array name="jpeg_quality">
         <item>60</item>

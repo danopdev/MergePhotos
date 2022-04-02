@@ -1,11 +1,7 @@
 #include <jni.h>
 #include <string>
 #include <vector>
-#include <android/log.h>
 #include "opencv2/stitching.hpp"
-
-
-#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,"MERGE",__VA_ARGS__)
 
 
 using namespace cv;
@@ -22,7 +18,7 @@ inline static unsigned int calculateColorDelta(const T* a, const T* b) {
 
 
 template<typename T>
-static bool makeLongExposureMergeWithDistanceNative( std::vector<Mat> &images, const Mat &averageImage, Mat &outputImage, int farthestThreshold) {
+static bool makeLongExposureNearestNative( std::vector<Mat> &images, const Mat &averageImage, Mat &outputImage) {
     const T *meanImageIt = averageImage.ptr<T>(0);
     std::vector<const T*> imageIterators;
 
@@ -39,9 +35,7 @@ static bool makeLongExposureMergeWithDistanceNative( std::vector<Mat> &images, c
     for (int row = 0; row < averageImage.rows; row++) {
         for (int col = 0; col < averageImage.cols; col++, meanImageIt++, outputImageIt++) {
             const T* nearestImageIt = meanImageIt;
-            const T* farthestImageIt = meanImageIt;
             unsigned int nearestDelta = UINT_MAX;
-            unsigned int farthestDelta = 0;
 
             for (auto& imageIt: imageIterators) {
                 unsigned int delta = calculateColorDelta(meanImageIt, imageIt);
@@ -51,15 +45,10 @@ static bool makeLongExposureMergeWithDistanceNative( std::vector<Mat> &images, c
                     nearestImageIt = imageIt;
                 }
 
-                if (farthestDelta < delta) {
-                    farthestDelta = delta;
-                    farthestImageIt = imageIt;
-                }
-
                 imageIt++;
             }
 
-            *outputImageIt = (farthestDelta >= farthestThreshold) ?  *farthestImageIt : *nearestImageIt;
+            *outputImageIt = *nearestImageIt;
         }
     }
 
@@ -121,19 +110,14 @@ Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv *
 
 
 JNIEXPORT jboolean JNICALL
-Java_com_dan_mergephotos_MainActivity_00024Companion_makeLongExposureMergeWithDistanceNative(
-        JNIEnv */*env*/, jobject /*thiz*/, jlong images_nativeObj, jlong averageImage_nativeObj, jlong outputImage_nativeObj,
-        jint farthestThreshold) {
+Java_com_dan_mergephotos_MainActivity_00024Companion_makeLongExposureNearestNative(
+        JNIEnv */*env*/, jobject /*thiz*/, jlong images_nativeObj, jlong averageImage_nativeObj, jlong outputImage_nativeObj) {
 
     std::vector<Mat> images;
     Mat &imagesAsMat = *((Mat *) images_nativeObj);
     Mat_to_vector_Mat(imagesAsMat, images);
     Mat &averageImage = *((Mat *) averageImage_nativeObj);
     Mat &outputImage = *((Mat *) outputImage_nativeObj);
-
-    if (farthestThreshold < 0) {
-        farthestThreshold = INT_MAX;
-    }
 
     if ( averageImage.empty()
          || !averageImage.isContinuous()
@@ -142,11 +126,10 @@ Java_com_dan_mergephotos_MainActivity_00024Companion_makeLongExposureMergeWithDi
         return false;
 
     if ( CV_16UC3 == averageImage.type() ) {
-        if (farthestThreshold < INT_MAX) farthestThreshold *= 256;
-        return makeLongExposureMergeWithDistanceNative<Point3uint16>(images, averageImage, outputImage, farthestThreshold);
+        return makeLongExposureNearestNative<Point3uint16>(images, averageImage, outputImage);
     }
 
-    return makeLongExposureMergeWithDistanceNative<Point3uint8>(images, averageImage, outputImage, farthestThreshold);
+    return makeLongExposureNearestNative<Point3uint8>(images, averageImage, outputImage);
 }
 
 }

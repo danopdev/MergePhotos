@@ -86,14 +86,6 @@
                     android:spinnerMode="dropdown" />
             </LinearLayout>
 
-            <SeekBar
-                android:id="@+id/longexposureFarthestThreshold"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="200"
-                android:paddingTop="10dp"
-                android:paddingBottom="10dp" />
-
         </LinearLayout>
 
         <com.ortiz.touchview.TouchImageView

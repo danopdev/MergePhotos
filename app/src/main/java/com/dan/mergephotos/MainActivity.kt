@@ -1,3 +1,4 @@
+
 package com.dan.mergephotos
 
 import android.Manifest
@@ -7,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.os.Parcelable
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Menu
@@ -14,7 +16,6 @@ import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
-import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -67,28 +68,25 @@ class MainActivity : AppCompatActivity() {
             return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, projection)
         }
 
-        fun makeLongExposureMergeWithDistance(
+        fun makeLongExposureNearest(
             images: List<Mat>,
             averageImage: Mat,
-            outputImage: Mat,
-            farthestThreshold: Int
+            outputImage: Mat
         ): Boolean {
             if (images.size < 3) return false
             val imagesMat = Converters.vector_Mat_to_Mat(images)
-            return makeLongExposureMergeWithDistanceNative(
+            return makeLongExposureNearestNative(
                 imagesMat.nativeObj,
                 averageImage.nativeObj,
-                outputImage.nativeObj,
-                farthestThreshold
+                outputImage.nativeObj
             )
         }
 
         external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
-        external fun makeLongExposureMergeWithDistanceNative(
+        external fun makeLongExposureNearestNative(
             images: Long,
             averageImage: Long,
-            outputImage: Long,
-            farthestThreshold: Int
+            outputImage: Long
         ): Boolean
     }
 
@@ -97,6 +95,7 @@ class MainActivity : AppCompatActivity() {
     private val binding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val cache = mutableMapOf<String, MutableList<Mat>>()
     private var outputName = Settings.DEFAULT_NAME
+    private var firstSourceUri: Uri? = null
 
     private val listenerOnItemSelectedListener = object : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
@@ -105,29 +104,12 @@ class MainActivity : AppCompatActivity() {
                     binding.panoramaOptions.isVisible = Settings.MERGE_PANORAMA == position
                     binding.longexposureOptions.isVisible = Settings.MERGE_LONG_EXPOSURE == position
                 }
-
-                binding.longexposureAlgorithm -> {
-                    binding.longexposureFarthestThreshold.isVisible =
-                        binding.longexposureAlgorithm.selectedItemPosition == Settings.LONG_EXPOSURE_FARTHEST_FROM_AVERAGE
-                }
             }
 
             mergePhotosSmall()
         }
 
         override fun onNothingSelected(parent: AdapterView<*>) {
-        }
-    }
-
-    private val listenerOnSeekBarChangeListener = object : SeekBar.OnSeekBarChangeListener {
-        override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
-        }
-
-        override fun onStartTrackingTouch(p0: SeekBar?) {
-        }
-
-        override fun onStopTrackingTouch(p0: SeekBar?) {
-            mergePhotosSmall()
         }
     }
 
@@ -182,52 +164,67 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (resultCode == RESULT_OK && requestCode == INTENT_OPEN_IMAGES) {
-            imagesClear()
-            outputName = Settings.DEFAULT_NAME
-            BusyDialog.show(supportFragmentManager, "Loading images")
+            data?.clipData?.let { clipData ->
+                val uriList = mutableListOf<Uri>()
+                val count = clipData.itemCount
+                for (i in 0 until count) {
+                    uriList.add(clipData.getItemAt(i).uri)
+                }
 
-            val imagesBig = mutableListOf<Mat>()
-            val imagesSmall = mutableListOf<Mat>()
+                loadImages(uriList.toList())
+            }
+        }
+    }
 
-            runFakeAsync {
-                data?.clipData?.let { clipData ->
-                    val count = clipData.itemCount
-                    var has8BitsImages = false
-                    var has16BitsImages = false
+    private fun loadImages( uriList: List<Uri> ) {
+        imagesClear()
+        outputName = Settings.DEFAULT_NAME
+        firstSourceUri = null
+        BusyDialog.show(supportFragmentManager, "Loading images")
 
-                    for (i in 0 until count) {
-                        try {
-                            if (0 == i) {
-                                DocumentFile.fromSingleUri(
-                                    applicationContext,
-                                    clipData.getItemAt(i).uri
-                                )?.name?.let { name ->
-                                    if (name.length > 0) {
-                                        val fields = name.split('.')
-                                        outputName = fields[0]
-                                        log("Output name: ${outputName}")
-                                    }
-                                }
+        val imagesBig = mutableListOf<Mat>()
+        val imagesSmall = mutableListOf<Mat>()
+
+        runFakeAsync {
+            var nameFound = false
+            var has8BitsImages = false
+            var has16BitsImages = false
+
+            for (uri in uriList) {
+                val image = loadImage(uri) ?: continue
+                if (null == firstSourceUri) firstSourceUri = uri
+
+                try {
+                    if (!nameFound) {
+                        DocumentFile.fromSingleUri( applicationContext, uri )?.name?.let { name ->
+                            if (name.length > 0) {
+                                nameFound = true
+                                val fields = name.split('.')
+                                outputName = fields[0]
+                                log("Output name: ${outputName}")
                             }
-                        } catch (e: Exception) {
-                        }
-
-                        val image = loadImage(clipData.getItemAt(i).uri) ?: continue
-                        imagesBig.add(image)
-
-                        if (CV_8UC3 == image.type()) has8BitsImages = true
-                        if (CV_16UC3 == image.type()) has16BitsImages = true
-                    }
-
-                    if (has8BitsImages && has16BitsImages) {
-                        for (i in 0 until imagesBig.size) {
-                            imagesBig[i] = convertToDepth(imagesBig[i], Settings.DEPTH_16_BITS)
                         }
                     }
+                } catch (e: Exception) {
+                }
 
-                    for (image in imagesBig) {
-                        imagesSmall.add(createSmallImage(image))
+                imagesBig.add(image)
+
+                if (CV_8UC3 == image.type()) has8BitsImages = true
+                if (CV_16UC3 == image.type()) has16BitsImages = true
+            }
+
+            if (imagesBig.size < 2) {
+                showNotEnoughImagesToast()
+            } else {
+                if (has8BitsImages && has16BitsImages) {
+                    for (i in 0 until imagesBig.size) {
+                        imagesBig[i] = convertToDepth(imagesBig[i], Settings.DEPTH_16_BITS)
                     }
+                }
+
+                for (image in imagesBig) {
+                    imagesSmall.add(createSmallImage(image))
                 }
 
                 if (imagesBig.size < 2) {
@@ -237,9 +234,9 @@ class MainActivity : AppCompatActivity() {
                     cache[CACHE_IMAGES_SMALL] = imagesSmall
                     mergePhotosSmall()
                 }
-
-               BusyDialog.dismiss()
             }
+
+            BusyDialog.dismiss()
         }
     }
 
@@ -513,19 +510,16 @@ class MainActivity : AppCompatActivity() {
         when(mode) {
             Settings.LONG_EXPOSURE_AVERAGE -> resultImages = averageImages
 
-            Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE, Settings.LONG_EXPOSURE_FARTHEST_FROM_AVERAGE -> {
+            Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE -> {
                 if (!averageImages.isEmpty()) {
                     val alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
                     if (null != alignedImages) {
                         val outputImage = Mat()
-                        val farthestThreshold =
-                            if (Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE == mode) -1 else binding.longexposureFarthestThreshold.progress
 
-                        if (makeLongExposureMergeWithDistance(
+                        if (makeLongExposureNearest(
                                 alignedImages,
                                 averageImages[0],
-                                outputImage,
-                                farthestThreshold
+                                outputImage
                             )
                         ) {
                             if (!outputImage.empty()) {
@@ -664,7 +658,11 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     imwrite(fileFullPath, convertToDepth(outputRGB, outputDepth), outputParams)
-                    showToast("Saved to: ${fileName}")
+
+                    //copy exif tags
+                    firstSourceUri?.let { uri ->
+                        ExifTools.copyExif( contentResolver, uri, fileFullPath )
+                    }
 
                     //Add it to gallery
                     val values = ContentValues()
@@ -672,6 +670,8 @@ class MainActivity : AppCompatActivity() {
                     values.put(MediaStore.Images.Media.DATA, fileFullPath)
                     values.put(MediaStore.Images.Media.MIME_TYPE, "image/${outputExtension}")
                     contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+
+                    showToast("Saved to: ${fileName}")
                 } catch (e: Exception) {
                     showToast("Failed to save")
                 }
@@ -700,12 +700,17 @@ class MainActivity : AppCompatActivity() {
         binding.spinnerMerge.onItemSelectedListener = listenerOnItemSelectedListener
         binding.panoramaProjection.onItemSelectedListener = listenerOnItemSelectedListener
         binding.longexposureAlgorithm.onItemSelectedListener = listenerOnItemSelectedListener
-        binding.longexposureFarthestThreshold.setOnSeekBarChangeListener(
-            listenerOnSeekBarChangeListener
-        )
 
-        binding.spinnerMerge.setSelection(settings.mergeMode)
-        binding.panoramaProjection.setSelection(settings.panoramaProjection)
-        binding.longexposureAlgorithm.setSelection(settings.longexposureAlgorithm)
+        binding.spinnerMerge.setSelection( if (settings.mergeMode >= binding.spinnerMerge.adapter.count) 0 else settings.mergeMode )
+        binding.panoramaProjection.setSelection( if (settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else settings.panoramaProjection )
+        binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
+
+        if (intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true) {
+            intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { list ->
+                val uriList = mutableListOf<Uri>()
+                list.forEach { uriList.add( it as Uri ) }
+                loadImages( uriList.toList() )
+            }
+        }
     }
 }
