@@ -96,9 +96,3 @@ From my point of view:
 * NS: looks OK and the time is decent
 * TELEA: doesn't look great
 * FSR (FAST & BEST): are too slow
-
-## Long exposure improuvements ##
-
-If you capture 2-3 images of a waterfall the water don't look blurry enought.
-Try to add some blur / motion blur on areas that are different.
-(I Need so take some interesting shots first.)
