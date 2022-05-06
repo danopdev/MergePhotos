@@ -55,15 +55,14 @@ Images are aligned before merging.
 Modes:
 * Average: will make changes looks like ghosts.
 * Nearest to Average (minimum 3 images): will make changes disapear.
-* Farthest from Average (minimum 3 images): will make all changes apear in the final photo.
 
 Input Image 1 | Input Image 2 | Input Image 3
 --- | --- | ---
 <img src="examples/longexposure/1.jpg" height="200px"/> | <img src="examples/longexposure/2.jpg" height="200px"/> | <img src="examples/longexposure/3.jpg" height="200px"/>
 
-Average | Nearest to Average | Farthest from Average
---- | --- | ---
-<img src="examples/longexposure/1_longexposure_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_nearest_to_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_farthest_from_average.jpg" height="200px"/>
+Average | Nearest to Average
+--- | ---
+<img src="examples/longexposure/1_longexposure_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_nearest_to_average.jpg" height="200px"/>
 
 
 ## Interpolation ##
@@ -96,3 +95,9 @@ From my point of view:
 * NS: looks OK and the time is decent
 * TELEA: doesn't look great
 * FSR (FAST & BEST): are too slow
+
+## Long exposure improuvements ##
+
+If you capture 2-3 images of a waterfall the water don't look blurry enought.
+Try to add some blur / motion blur on areas that are different.
+(I need so take some interesting shots first.)
