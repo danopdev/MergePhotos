@@ -19,11 +19,11 @@ Needs minimum 2 photos.
 
 Input Image 1 | Input Image 2
 --- | ---
-<img src="examples/panorama/1.jpg" height="200px"/> | <img src="examples/panorama/2.jpg" height="200px"/>
+![](examples/panorama/1_small.jpg) | ![](examples/panorama/2_small.jpg)
 
 Panorama: Plane | Panorama: Cylindrical | Panorama: Spherical
 --- | --- | ---
-<img src="examples/panorama/1_panorama_plane.jpg" height="200px"> | <img src="examples/panorama/1_panorama_cylindrical.jpg" height="200px"> | <img src="examples/panorama/1_panorama_spherical.jpg" height="200px">
+![](examples/panorama/1_panorama_plane_small.jpg) | ![](examples/panorama/1_panorama_cylindrical_small.jpg) | ![](examples/panorama/1_panorama_spherical_small.jpg)
 
 ## Aligned ##
 
@@ -31,11 +31,11 @@ Images are aligned based on the first image. Aligned images will fill with black
 
 Input Image 1 | Input Image 2 | Input Image 3
 --- | --- | ---
-<img src="examples/aligned/1.jpg" height="200px"/> | <img src="examples/aligned/2.jpg" height="200px"/> | <img src="examples/aligned/3.jpg" height="200px"/>
+![](examples/aligned/1_small.jpg) | ![](examples/aligned/2_small.jpg) | ![](examples/aligned/3_small.jpg)
 
-Output Image 1 (the same) | Output Image 2 | Output Image 3
+Output Image 1 (same as Input Image 1) | Output Image 2 | Output Image 3
 --- | --- | ---
-<img src="examples/aligned/1_aligned.jpg" height="200px"/> | <img src="examples/aligned/2_aligned.jpg" height="200px"/> | <img src="examples/aligned/3_aligned.jpg" height="200px"/>
+![](examples/aligned/1_aligned_small.jpg) | ![](examples/aligned/2_aligned_small.jpg) | ![](examples/aligned/3_aligned_small.jpg)
 
 ## HDR ##
 
@@ -43,11 +43,11 @@ Images are aligned before merging.
 
 Input Image 1 | Input Image 2 | Input Image 3
 --- | --- | ---
-<img src="examples/hdr/1.jpg" height="200px"/> | <img src="examples/hdr/2.jpg" height="200px"/> | <img src="examples/hdr/3.jpg" height="200px"/>
+![](examples/hdr/1.jpg) | ![](examples/hdr/2.jpg) | ![](examples/hdr/3.jpg)
 
 Output
 
-<img src="examples/hdr/1_hdr.jpg" height="300px"/>
+![](examples/hdr/1_hdr_small.jpg)
 
 ## Long Exposure ##
 
@@ -58,18 +58,18 @@ Modes:
 
 Input Image 1 | Input Image 2 | Input Image 3
 --- | --- | ---
-<img src="examples/longexposure/1.jpg" height="200px"/> | <img src="examples/longexposure/2.jpg" height="200px"/> | <img src="examples/longexposure/3.jpg" height="200px"/>
+![](examples/longexposure/1_small.jpg) | ![](examples/longexposure/2_small.jpg) | ![](examples/longexposure/3_small.jpg)
 
 Average | Nearest to Average
 --- | ---
-<img src="examples/longexposure/1_longexposure_average.jpg" height="200px"/> | <img src="examples/longexposure/1_longexposure_nearest_to_average.jpg" height="200px"/>
+![](examples/longexposure/1_longexposure_average_small.jpg) | ![](examples/longexposure/1_longexposure_nearest_to_average_small.jpg)
 
 
 ## Interpolation ##
 
 Linear (default) | Cubic | Area | Lanczos4
 --- | --- | --- | ---
-<img src="examples/panorama/panorama_interp_linear_default.jpg" height="120px"> |  <img src="examples/panorama/panorama_interp_cubic.jpg" height="120px"> | <img src="examples/panorama/panorama_interp_area.jpg" height="120px"> | <img src="examples/panorama/panorama_interp_lanczos4.jpg" height="120px">
+![](examples/panorama/panorama_interp_linear_default_small.jpg) | ![](examples/panorama/panorama_interp_cubic_small.jpg) | ![](examples/panorama/panorama_interp_area_small.jpg) | ![](examples/panorama/panorama_interp_lanczos4_small.jpg)
 
 Lanczos4 looks to be the sharpest so I will switch from default to this one.
 
@@ -79,16 +79,16 @@ Lanczos4 looks to be the sharpest so I will switch from default to this one.
 
 When creating panoramas the result images have black borders.
 
-Panorama | Mask
---- | ---
-<img src="examples/inpaint/panorama.jpg" height="150px"/> | <img src="examples/inpaint/mask.png" height="150px"/>
+| Panorama | Mask      |
+| -------- | --------- |
+| ![](examples/inpaint/panorama_small.jpg) | ![](examples/inpaint/mask_small.jpg) |
 
 I tested opencv / opencv_contrib to fill this areas (the time it took is on my laptop not on adroid device):
 
-Inpaint NS | Inpaint TELEA | xphoto::inpaint SHIFTMAP | xphoto::inpaint FSR FAST | xphoto::inpaint FSR BEST
+NS | TELEA | SHIFTMAP | FSR FAST | FSR BEST
 --- | --- | --- | --- | ---
 4.57 seconds | 4.04 seconds | 22.68 seconds | 190.09 seconds | 3086.39 seconds
-<img src="examples/inpaint/inpaint_ns.jpg" height="120px"/> | <img src="examples/inpaint/inpaint_telea.jpg" height="120px"/> | <img src="examples/inpaint/inpaint_shiftmap.jpg" height="120px"/> | <img src="examples/inpaint/inpaint_fsr_fast.jpg" height="120px"/> | <img src="examples/inpaint/inpaint_fsr_best.jpg" height="120px"/>
+![](examples/inpaint/inpaint_ns_small.jpg) | ![](examples/inpaint/inpaint_telea_small.jpg) | ![](examples/inpaint/inpaint_shiftmap_small.jpg) | ![](examples/inpaint/inpaint_fsr_fast_small.jpg) | ![](examples/inpaint/inpaint_fsr_best_small.jpg)
 
 From my point of view:
 * SHIFTMAP: looks the best (at leat for my test images) but seems a little too slow for a android (to be tested)
