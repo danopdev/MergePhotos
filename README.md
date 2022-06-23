@@ -43,7 +43,7 @@ Images are aligned before merging.
 
 Input Image 1 | Input Image 2 | Input Image 3
 --- | --- | ---
-![](examples/hdr/1.jpg) | ![](examples/hdr/2.jpg) | ![](examples/hdr/3.jpg)
+![](examples/hdr/1_small.jpg) | ![](examples/hdr/2_small.jpg) | ![](examples/hdr/3_small.jpg)
 
 Output
 
