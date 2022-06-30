@@ -109,6 +109,22 @@
 
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/hdrOptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:orientation="vertical">
+
+            <Switch
+                android:id="@+id/hdrAlreadyAligned"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Already aligned (don't align)" />
+
+        </LinearLayout>
+
         <com.ortiz.touchview.TouchImageView
             android:id="@+id/imageView"
             android:layout_width="match_parent"

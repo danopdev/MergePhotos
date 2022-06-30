@@ -104,6 +104,7 @@ class MainActivity : AppCompatActivity() {
                 binding.spinnerMerge -> {
                     binding.panoramaOptions.isVisible = Settings.MERGE_PANORAMA == position
                     binding.longexposureOptions.isVisible = Settings.MERGE_LONG_EXPOSURE == position
+                    binding.hdrOptions.isVisible = Settings.MERGE_HDR == position
                 }
             }
 
@@ -565,16 +566,17 @@ class MainActivity : AppCompatActivity() {
     private fun mergeHdr(prefix: String): Pair<List<Mat>, String> {
         log("HDR: Start")
 
-        val alignedImages = alignImages(prefix).first
+        val alignImages = !binding.hdrAlreadyAligned.isChecked
+        val inputImages = if (alignImages) alignImages(prefix).first else ( cache[prefix] ?: listOf() )
         val output = Mat()
 
-        if (alignedImages.size >= 2) {
+        if (inputImages.size >= 2) {
             val hdrMat = Mat()
             val mergeMertens = createMergeMertens()
-            mergeMertens.process(alignedImages, hdrMat)
+            mergeMertens.process(inputImages, hdrMat)
 
             if (!hdrMat.empty()) {
-                hdrMat.convertTo(output, alignedImages[0].type(), 255.0)
+                hdrMat.convertTo(output, inputImages[0].type(), 255.0)
             }
         }
 
@@ -731,6 +733,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.panoramaInpaint.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
         binding.longexposureAlreadyAligned.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
+        binding.hdrAlreadyAligned.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
 
         if (intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true) {
             intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { list ->
