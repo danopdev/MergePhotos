@@ -37,6 +37,7 @@ import org.opencv.imgcodecs.Imgcodecs.*
 import org.opencv.imgproc.Imgproc.*
 import org.opencv.photo.Photo.createMergeMertens
 import org.opencv.utils.Converters
+import org.opencv.xphoto.Xphoto
 import java.io.File
 import kotlin.concurrent.timer
 
@@ -63,9 +64,9 @@ class MainActivity : AppCompatActivity() {
             Log.i("MERGE", msg)
         }
 
-        fun makePanorama(images: List<Mat>, panorama: Mat, projection: Int): Boolean {
+        fun makePanorama(images: List<Mat>, panorama: Mat, mask: Mat?, projection: Int): Boolean {
             val imagesMat = Converters.vector_Mat_to_Mat(images)
-            return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, projection)
+            return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, mask?.nativeObj ?: 0, projection)
         }
 
         fun makeLongExposureNearest(
@@ -82,7 +83,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
+        external fun makePanoramaNative(images: Long, panorama: Long, mask: Long, projection: Int): Boolean
         external fun makeLongExposureNearestNative(
             images: Long,
             averageImage: Long,
@@ -373,13 +374,34 @@ class MainActivity : AppCompatActivity() {
 
     private fun mergePanorama(prefix: String): Pair<List<Mat>, String> {
         log("Panorama: Start")
+
+        //parameters
         val mode = binding.panoramaProjection.selectedItemPosition
+        val inpaint = binding.checkBoxInpaint.isChecked
+
         val inputImages = cache[prefix] ?: return Pair(listOf(), "")
         val output = Mat()
-        makePanorama(inputImages.toList(), output, mode)
+        val mask: Mat? = if (inpaint) Mat() else null
+        makePanorama(inputImages.toList(), output, mask, mode)
         log("Panorama: ${if (output.empty()) "Failed" else "Success"}")
-        val outputList = if (output.empty()) listOf() else listOf(output)
-        return Pair(outputList, "panorama_" + binding.panoramaProjection.selectedItem.toString())
+
+        val outputList = mutableListOf<Mat>()
+
+        val filePrefix = "panorama_" +
+                binding.panoramaProjection.selectedItem.toString() +
+                (if (inpaint) "_inpaint" else "")
+
+        if (!output.empty()) {
+            if (null != mask) {
+                val finalMat = Mat()
+                Xphoto.inpaint(output, mask, finalMat, Xphoto.INPAINT_SHIFTMAP)
+                if (!finalMat.empty()) outputList.add(finalMat)
+            } else {
+                outputList.add(output)
+            }
+        }
+
+        return Pair(outputList.toList(), filePrefix)
     }
 
     private fun toGrayImage(image: Mat): Mat {
@@ -704,6 +726,8 @@ class MainActivity : AppCompatActivity() {
         binding.spinnerMerge.setSelection( if (settings.mergeMode >= binding.spinnerMerge.adapter.count) 0 else settings.mergeMode )
         binding.panoramaProjection.setSelection( if (settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else settings.panoramaProjection )
         binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
+
+        binding.checkBoxInpaint.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
 
         if (intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true) {
             intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { list ->
