@@ -497,26 +497,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun calculateAverage(prefix: String): List<Mat> {
-        var averageImages = cache[prefix + CACHE_IMAGES_AVERAGE_SUFFIX]
+        val alignImages = !binding.longexposureAlreadyAligned.isChecked
+        val cacheKey = prefix + CACHE_IMAGES_AVERAGE_SUFFIX + (if (alignImages) ".Aligned" else "" )
+        var averageImages = cache[cacheKey]
 
         if (null == averageImages) {
             averageImages = mutableListOf()
-            val alignedImages = alignImages(prefix).first
+            val inputImages = if (alignImages) alignImages(prefix).first else (cache[prefix] ?: listOf())
             val output = Mat()
 
-            if (alignedImages.size >= 2) {
+            if (inputImages.size >= 2) {
                 val floatMat = Mat()
-                alignedImages[0].convertTo(floatMat, CV_32FC3)
+                inputImages[0].convertTo(floatMat, CV_32FC3)
 
-                for (imageIndex in 1 until alignedImages.size) {
-                    add(floatMat, alignedImages[imageIndex], floatMat, Mat(), CV_32FC3)
+                for (imageIndex in 1 until inputImages.size) {
+                    add(floatMat, inputImages[imageIndex], floatMat, Mat(), CV_32FC3)
                 }
 
-                floatMat.convertTo(output, alignedImages[0].type(), 1.0 / alignedImages.size.toDouble())
+                floatMat.convertTo(output, inputImages[0].type(), 1.0 / inputImages.size.toDouble())
             }
 
             if (!output.empty()) averageImages.add(output)
-            cache[prefix + CACHE_IMAGES_AVERAGE_SUFFIX] = averageImages
+            cache[cacheKey] = averageImages
         }
 
         return averageImages
@@ -533,7 +535,7 @@ class MainActivity : AppCompatActivity() {
             Settings.LONG_EXPOSURE_AVERAGE -> resultImages = averageImages
 
             Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE -> {
-                if (!averageImages.isEmpty()) {
+                if (averageImages.isNotEmpty()) {
                     val alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
                     if (null != alignedImages) {
                         val outputImage = Mat()
@@ -728,6 +730,7 @@ class MainActivity : AppCompatActivity() {
         binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
 
         binding.panoramaInpaint.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
+        binding.longexposureAlreadyAligned.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
 
         if (intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true) {
             intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { list ->
