@@ -63,7 +63,7 @@
             </LinearLayout>
 
             <CheckBox
-                android:id="@+id/checkBoxInpaint"
+                android:id="@+id/panoramaInpaint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"

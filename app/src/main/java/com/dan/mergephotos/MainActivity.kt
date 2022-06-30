@@ -377,7 +377,7 @@ class MainActivity : AppCompatActivity() {
 
         //parameters
         val mode = binding.panoramaProjection.selectedItemPosition
-        val inpaint = binding.checkBoxInpaint.isChecked
+        val inpaint = binding.panoramaInpaint.isChecked
 
         val inputImages = cache[prefix] ?: return Pair(listOf(), "")
         val output = Mat()
@@ -727,7 +727,7 @@ class MainActivity : AppCompatActivity() {
         binding.panoramaProjection.setSelection( if (settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else settings.panoramaProjection )
         binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
 
-        binding.checkBoxInpaint.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
+        binding.panoramaInpaint.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
 
         if (intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true) {
             intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { list ->
