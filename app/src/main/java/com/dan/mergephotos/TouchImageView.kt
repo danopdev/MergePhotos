@@ -72,9 +72,19 @@ open class TouchImageView @JvmOverloads constructor(
         }
     })
 
-    open fun setBitmap(bitmap: Bitmap?) {
+    open fun setBitmap(bitmap: Bitmap?, _reset: Boolean = true) {
+        var reset = _reset
+        if (!reset) {
+            val oldBitmap = this._bitmap
+            if (null == bitmap || null == oldBitmap) {
+                reset = true
+            } else if (bitmap.width != oldBitmap.width || bitmap.height != oldBitmap.height) {
+                reset = true
+            }
+        }
+
         this._bitmap = bitmap
-        resetPosition()
+        if (reset) resetPosition()
         invalidate()
     }
 
