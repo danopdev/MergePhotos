@@ -208,6 +208,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 } catch (e: Exception) {
+                    e.printStackTrace()
                 }
 
                 imagesBig.add(image)
@@ -708,13 +709,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun setBitmap(bitmap: Bitmap?) {
         if (null != bitmap) {
-            binding.imageView.setImageBitmap(bitmap)
+            binding.imageView.setBitmap(bitmap)
         } else {
             showToast("Failed to merge photos")
-            binding.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
+            binding.imageView.setBitmap(null)
         }
-
-        binding.imageView.resetZoom()
     }
 
     private fun onPermissionsAllowed() {
