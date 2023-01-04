@@ -12,6 +12,12 @@ import kotlin.math.max
 import kotlin.math.min
 
 
+interface TouchImageViewListener {
+    fun onViewRectChanged(rect: RectF)
+    fun onTouchEvent(event: MotionEvent): Boolean
+}
+
+
 open class TouchImageView @JvmOverloads constructor(
         context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
@@ -25,6 +31,7 @@ open class TouchImageView @JvmOverloads constructor(
         const val MAX_PIXEL_ZOOM = 10 // bitmap pixels / view pixel
     }
 
+    private var _listener: TouchImageViewListener? = null
     private var _bitmap: Bitmap? = null
     private var action = ACTION_NONE
     private var actionScale = 1.0f
@@ -39,8 +46,18 @@ open class TouchImageView @JvmOverloads constructor(
         bgPaint.style = Paint.Style.FILL
     }
 
-    val viewRect: RectF
+    var viewRect: RectF
         get() = _viewRect
+        set(rect) {
+            _viewRect.set(rect)
+            invalidate()
+        }
+
+    val viewToBitmapScale: Float
+        get() {
+            val bitmap = this._bitmap ?: return 1f
+            return bitmap.width / _viewRect.width()
+        }
 
     private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.OnScaleGestureListener {
         override fun onScale(detector: ScaleGestureDetector?): Boolean {
@@ -71,6 +88,10 @@ open class TouchImageView @JvmOverloads constructor(
             return true
         }
     })
+
+    fun setListener(lister: TouchImageViewListener?) {
+        _listener = lister
+    }
 
     open fun setBitmap(bitmap: Bitmap?, _reset: Boolean = true) {
         var reset = _reset
@@ -158,44 +179,7 @@ open class TouchImageView @JvmOverloads constructor(
         resetPosition()
     }
 
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
-        if (null == event) return true
-        val bitmap = this._bitmap ?: return true
-
-        action = ACTION_NONE
-        scaleGestureDetector.onTouchEvent(event)
-        gestureDetector.onTouchEvent(event)
-
-        val viewRect = RectF(_viewRect)
-        val fitRect = bestFitRect(width, height, bitmap.width, bitmap.height)
-        val minSize = PointF(fitRect.width(), fitRect.height())
-        val maxSize = PointF(bitmap.width.toFloat() * MAX_PIXEL_ZOOM, bitmap.height.toFloat() * MAX_PIXEL_ZOOM)
-
-        when(action) {
-            ACTION_DOUBLE_TAP -> {
-                if (viewRect.width() > width || viewRect.height() > height) {
-                    viewRect.set(fitRect)
-                } else {
-                    scaleRect(
-                            viewRect,
-                            bitmap.width / viewRect.width(),
-                            PointF(event.x, event.y),
-                            minSize,
-                            maxSize
-                    )
-                }
-            }
-
-            ACTION_MOVE -> {
-                viewRect.offset(-actionMove.x, -actionMove.y)
-            }
-
-            ACTION_SCALE -> {
-                scaleRect(viewRect, actionScale, actionScaleCenter, minSize, maxSize)
-            }
-
-            else -> return true
-        }
+    private fun updateViewRect(viewRect: RectF, fitRect: RectF) {
 
         if (viewRect.width() < width && viewRect.height() < height) {
             viewRect.set(fitRect)
@@ -220,7 +204,57 @@ open class TouchImageView @JvmOverloads constructor(
         val dirty = viewRect.toRect() != this._viewRect.toRect()
         this._viewRect.set(viewRect)
 
-        if (dirty) invalidate()
+        if (dirty) {
+            invalidate()
+            _listener?.onViewRectChanged(this._viewRect)
+        }
+    }
+
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        if (null == event) return true
+        val bitmap = this._bitmap ?: return true
+
+        val lister = _listener
+        if (null != lister && lister.onTouchEvent(event)) return true
+
+        action = ACTION_NONE
+        scaleGestureDetector.onTouchEvent(event)
+        gestureDetector.onTouchEvent(event)
+
+        val viewRect = RectF(_viewRect)
+        val fitRect = bestFitRect(width, height, bitmap.width, bitmap.height)
+        val minSize = PointF(fitRect.width(), fitRect.height())
+        val maxSize = PointF(bitmap.width.toFloat() * MAX_PIXEL_ZOOM, bitmap.height.toFloat() * MAX_PIXEL_ZOOM)
+
+        when(action) {
+            ACTION_DOUBLE_TAP -> {
+                if (viewRect.width() > width || viewRect.height() > height) {
+                    viewRect.set(fitRect)
+                } else {
+                    var scale = bitmap.width / viewRect.width()
+                    if (scale < 2f) scale = 2f
+                    scaleRect(
+                            viewRect,
+                            scale,
+                            PointF(event.x, event.y),
+                            minSize,
+                            maxSize
+                    )
+                }
+            }
+
+            ACTION_MOVE -> {
+                viewRect.offset(-actionMove.x, -actionMove.y)
+            }
+
+            ACTION_SCALE -> {
+                scaleRect(viewRect, actionScale, actionScaleCenter, minSize, maxSize)
+            }
+
+            else -> return true
+        }
+
+        updateViewRect(viewRect, fitRect)
 
         return true
     }

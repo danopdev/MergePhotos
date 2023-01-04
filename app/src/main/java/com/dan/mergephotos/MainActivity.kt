@@ -26,8 +26,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.dan.mergephotos.databinding.ActivityMainBinding
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
-import org.opencv.calib3d.Calib3d.RANSAC
-import org.opencv.calib3d.Calib3d.findHomography
+import org.opencv.calib3d.Calib3d.*
 import org.opencv.core.*
 import org.opencv.core.Core.*
 import org.opencv.core.CvType.*
@@ -55,6 +54,8 @@ class MainActivity : AppCompatActivity() {
         const val CACHE_IMAGES = "Big"
         const val CACHE_IMAGES_SMALL = "Small"
         const val CACHE_IMAGES_ALIGNED_SUFFIX = ".Aligned"
+        const val CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX = ".AlignedWithMask"
+        const val CACHE_MASK_SUFFIX = ".Mask"
         const val CACHE_IMAGES_AVERAGE_SUFFIX = ".Average"
 
         const val ALPHA_8_TO_16 = 256.0
@@ -104,7 +105,7 @@ class MainActivity : AppCompatActivity() {
                 binding.spinnerMerge -> {
                     binding.panoramaOptions.isVisible = Settings.MERGE_PANORAMA == position
                     binding.longexposureOptions.isVisible = Settings.MERGE_LONG_EXPOSURE == position
-                    binding.hdrOptions.isVisible = Settings.MERGE_HDR == position
+                    binding.alignOptions.isVisible = Settings.MERGE_LONG_EXPOSURE == position || Settings.MERGE_HDR == position || Settings.MERGE_ALIGN == position
                 }
             }
 
@@ -317,7 +318,7 @@ class MainActivity : AppCompatActivity() {
         cache.clear()
     }
 
-    private fun createSmallImage(image: Mat) : Mat {
+    private fun createSmallImage(image: Mat, nearest: Boolean = false) : Mat {
         val widthSmall: Int
         val heightSmall: Int
 
@@ -332,7 +333,11 @@ class MainActivity : AppCompatActivity() {
         if (image.cols() <= widthSmall && image.rows() <= heightSmall) return image
 
         val imageSmall = Mat()
-        resize(image, imageSmall, Size(widthSmall.toDouble(), heightSmall.toDouble()))
+        resize(
+            image, imageSmall,
+            Size(widthSmall.toDouble(), heightSmall.toDouble()),
+            0.0, 0.0,
+            if (nearest) INTER_NEAREST else INTER_LANCZOS4 )
         return imageSmall
     }
 
@@ -426,11 +431,11 @@ class MainActivity : AppCompatActivity() {
         return normalizedMat
     }
 
-    private fun orbDetectAndCompute(orbDetector: ORB, image: Mat): Pair<MutableList<KeyPoint>, Mat> {
+    private fun orbDetectAndCompute(orbDetector: ORB, image: Mat, mask: Mat): Pair<MutableList<KeyPoint>, Mat> {
         val normalizedImage = toNormalizedImage(image)
         val keyPoints = MatOfKeyPoint()
         val descriptors = Mat()
-        orbDetector.detectAndCompute(normalizedImage, Mat(), keyPoints, descriptors)
+        orbDetector.detectAndCompute(normalizedImage, mask, keyPoints, descriptors)
         return Pair(keyPoints.toList(), descriptors)
     }
 
@@ -439,19 +444,25 @@ class MainActivity : AppCompatActivity() {
 
         log("Align: Start")
 
-        var alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
+        val masks = cache[prefix + CACHE_MASK_SUFFIX]
+        val useMask = binding.checkBoxUseMask.isChecked && null != masks && masks.isNotEmpty()
+        val suffix = if (useMask) CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX else CACHE_IMAGES_ALIGNED_SUFFIX
+
+        var alignedImages = cache[prefix + suffix]
         if (null == alignedImages) {
+            val mask = if (useMask && null != masks && masks.isNotEmpty()) masks[0] else Mat()
+
             alignedImages = mutableListOf()
 
             alignedImages.add(inputImages[0])
             val orbDetector = ORB.create()
             val matcher = BFMatcher.create()
-            val refInfo = orbDetectAndCompute(orbDetector, inputImages[0])
+            val refInfo = orbDetectAndCompute(orbDetector, inputImages[0], mask)
             val refKeyPoints = refInfo.first
             val refDescriptors = refInfo.second
 
             for (imageIndex in 1 until inputImages.size) {
-                val info = orbDetectAndCompute(orbDetector, inputImages[imageIndex])
+                val info = orbDetectAndCompute(orbDetector, inputImages[imageIndex], mask)
                 val keyPoints = info.first
                 val descriptors = info.second
 
@@ -476,7 +487,7 @@ class MainActivity : AppCompatActivity() {
                 val matListRefPoints = MatOfPoint2f()
                 matListRefPoints.fromList(listRefPoints)
 
-                val homography = findHomography(matListPoints, matListRefPoints, RANSAC)
+                val homography = findHomography(matListPoints, matListRefPoints, RANSAC, 5.0)
                 val alignedImage = Mat()
                 warpPerspective(
                     inputImages[imageIndex], alignedImage, homography,
@@ -486,7 +497,7 @@ class MainActivity : AppCompatActivity() {
                 if (!alignedImage.empty()) alignedImages.add(alignedImage)
             }
 
-            cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX] = alignedImages
+            cache[prefix + suffix] = alignedImages
         }
 
         log("Align: End")
@@ -499,8 +510,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun calculateAverage(prefix: String): List<Mat> {
-        val alignImages = !binding.longexposureAlreadyAligned.isChecked
-        val cacheKey = prefix + CACHE_IMAGES_AVERAGE_SUFFIX + (if (alignImages) ".Aligned" else "" )
+        val alignImages = binding.checkBoxAlign.isChecked
+        val useMask = alignImages && binding.checkBoxUseMask.isChecked
+
+        val cacheKeySuffix = when {
+            useMask -> CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX
+            alignImages -> CACHE_IMAGES_ALIGNED_SUFFIX
+            else -> ""
+        }
+        val cacheKey = prefix + CACHE_IMAGES_AVERAGE_SUFFIX + cacheKeySuffix
         var averageImages = cache[cacheKey]
 
         if (null == averageImages) {
@@ -567,7 +585,7 @@ class MainActivity : AppCompatActivity() {
     private fun mergeHdr(prefix: String): Pair<List<Mat>, String> {
         log("HDR: Start")
 
-        val alignImages = !binding.hdrAlreadyAligned.isChecked
+        val alignImages = binding.checkBoxAlign.isChecked
         val inputImages = if (alignImages) alignImages(prefix).first else ( cache[prefix] ?: listOf() )
         val output = Mat()
 
@@ -716,6 +734,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun editMask() {
+        val images = cache[CACHE_IMAGES]
+        if (null == images || images.isEmpty()) return
+        if (!binding.checkBoxAlign.isChecked) return
+        if (!binding.checkBoxUseMask.isChecked) return
+
+        var mask = Mat()
+        val masks = cache[CACHE_IMAGES + CACHE_MASK_SUFFIX]
+        if (null != masks && masks.isNotEmpty()) {
+            mask = masks[0]
+        }
+
+        MaskEditDialog.show(this, images[0], mask) {
+            val maskSmall = createSmallImage(mask, true)
+            cache.remove(CACHE_IMAGES + CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX)
+            cache.remove(CACHE_IMAGES_SMALL + CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX)
+            cache.remove(CACHE_IMAGES + CACHE_IMAGES_AVERAGE_SUFFIX + CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX)
+            cache.remove(CACHE_IMAGES_SMALL + CACHE_IMAGES_AVERAGE_SUFFIX + CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX)
+            cache[CACHE_IMAGES + CACHE_MASK_SUFFIX] = mutableListOf(mask)
+            cache[CACHE_IMAGES_SMALL + CACHE_MASK_SUFFIX] = mutableListOf(maskSmall)
+            mergePhotosSmall()
+        }
+    }
+
     private fun onPermissionsAllowed() {
         if (!OpenCVLoader.initDebug()) fatalError("Failed to initialize OpenCV")
         System.loadLibrary("native-lib")
@@ -731,8 +773,9 @@ class MainActivity : AppCompatActivity() {
         binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
 
         binding.panoramaInpaint.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
-        binding.longexposureAlreadyAligned.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
-        binding.hdrAlreadyAligned.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
+        binding.checkBoxAlign.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
+        binding.checkBoxUseMask.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
+        binding.btnEditMask.setOnClickListener { editMask() }
 
         if (intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true) {
             intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { list ->

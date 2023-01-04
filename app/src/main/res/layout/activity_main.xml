@@ -100,28 +100,34 @@
 
             </LinearLayout>
 
-            <Switch
-                android:id="@+id/longexposureAlreadyAligned"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Already aligned (don't align)" />
-
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/hdrOptions"
+            android:id="@+id/alignOptions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:orientation="vertical">
+            android:orientation="horizontal">
 
-            <Switch
-                android:id="@+id/hdrAlreadyAligned"
-                android:layout_width="match_parent"
+            <CheckBox
+                android:id="@+id/checkBoxAlign"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Already aligned (don't align)" />
+                android:checked="true"
+                android:text="Align" />
+
+            <CheckBox
+                android:id="@+id/checkBoxUseMask"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="UseMask" />
+
+            <ImageButton
+                android:id="@+id/btnEditMask"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:srcCompat="@android:drawable/ic_menu_edit" />
 
         </LinearLayout>
 
