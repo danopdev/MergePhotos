@@ -20,7 +20,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Merge:"
-                android:textColor="@color/black"
                 android:textSize="24sp"
                 android:textStyle="bold" />
 
@@ -50,7 +49,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Projection:"
-                    android:textColor="@color/black"
                     android:textStyle="bold" />
 
                 <Spinner
@@ -87,7 +85,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Algorithm:"
-                    android:textColor="@color/black"
                     android:textStyle="bold" />
 
                 <Spinner
