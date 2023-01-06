@@ -3,37 +3,29 @@ package com.dan.mergephotos
 import android.graphics.*
 import android.os.Bundle
 import android.util.DisplayMetrics
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import androidx.fragment.app.DialogFragment
-import com.dan.mergephotos.databinding.MaskEditDialogBinding
+import com.dan.mergephotos.databinding.MaskEditFragmentBinding
 import org.opencv.android.Utils
 import org.opencv.core.Core.*
 import org.opencv.core.CvType
 import org.opencv.core.Mat
 
 
-class MaskEditDialog(image: Mat, private val mask: Mat ) : DialogFragment() {
+class MaskEditFragment(private val activity: MainActivity, image: Mat, private val mask: Mat, private val onOKListener: ()->Unit ) : DialogFragment() {
 
     companion object {
-        private const val DIALOG_TAG = "EDIT_MASK_DIALOG"
         private const val RADIUS = 50f //dp
 
-        fun show(activity: MainActivity, image: Mat, mask: Mat, listener: ()->Unit ) {
-            with( MaskEditDialog( image, mask ) ) {
-                isCancelable = false
-                setOnSetMaskListener(listener)
-                show(activity.supportFragmentManager, DIALOG_TAG)
-            }
+        fun show(activity: MainActivity, image: Mat, mask: Mat, onOKListener: ()->Unit ) {
+            activity.pushView( "Edit Mask", MaskEditFragment( activity, image, mask, onOKListener ) )
         }
 
         private fun matToBitmap( image: Mat, bitmap: Bitmap ) {
             val image8: Mat
             if (CvType.CV_16UC3 == image.type()) {
                 image8 = Mat()
-                image.convertTo(image8, CvType.CV_8UC3, MainActivity.ALPHA_16_TO_8)
+                image.convertTo(image8, CvType.CV_8UC3, MainFragment.ALPHA_16_TO_8)
             } else if (CvType.CV_8UC1 == image.type()) {
                 image8 = Mat()
                 merge(listOf(image, image, image), image8)
@@ -45,8 +37,7 @@ class MaskEditDialog(image: Mat, private val mask: Mat ) : DialogFragment() {
         }
     }
 
-    private lateinit var binding: MaskEditDialogBinding
-    private var _onSetMaskListener: (()->Unit)? = null
+    private lateinit var binding: MaskEditFragmentBinding
     private var fromX = -1f
     private var fromY = -1f
     private val paint = Paint()
@@ -130,10 +121,6 @@ class MaskEditDialog(image: Mat, private val mask: Mat ) : DialogFragment() {
         return dp * (context.resources.displayMetrics.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT)
     }
 
-    fun setOnSetMaskListener(listener: ()->Unit) {
-        _onSetMaskListener = listener
-    }
-
     private fun drawMask(callback:(canvas: Canvas)->Unit) {
         val canvas = Canvas(maskBitmap)
         callback(canvas)
@@ -146,31 +133,36 @@ class MaskEditDialog(image: Mat, private val mask: Mat ) : DialogFragment() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setStyle(STYLE_NO_FRAME, android.R.style.Theme_Material_NoActionBar_Fullscreen)
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.ok_menu, menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when(item.itemId) {
+            R.id.ok -> {
+                val maskMat = Mat()
+                Utils.bitmapToMat(maskBitmap, maskMat)
+                val channels = mutableListOf<Mat>()
+                split(maskMat, channels)
+                val maskChannel = channels[0]
+
+                if (mask.empty()) mask.create(maskChannel.rows(), maskChannel.cols(), CvType.CV_8UC1)
+                maskChannel.copyTo(mask)
+
+                onOKListener.invoke()
+
+                activity.popView()
+
+                return true
+            }
+        }
+
+        return super.onOptionsItemSelected(item)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = MaskEditDialogBinding.inflate( inflater )
-
-        binding.btnCancel.setOnClickListener {
-            dismiss()
-        }
-
-        binding.btnOK.setOnClickListener {
-            val maskMat = Mat()
-            Utils.bitmapToMat(maskBitmap, maskMat)
-            val channels = mutableListOf<Mat>()
-            split(maskMat, channels)
-            val maskChannel = channels[0]
-
-            if (mask.empty()) mask.create(maskChannel.rows(), maskChannel.cols(), CvType.CV_8UC1)
-            maskChannel.copyTo(mask)
-
-            _onSetMaskListener?.invoke()
-            dismiss()
-        }
+        binding = MaskEditFragmentBinding.inflate( inflater )
 
         binding.imageView.setListener(touchImageViewListenerNone)
         binding.maskView.setListener(touchImageViewListenerDrawMask)
@@ -180,6 +172,8 @@ class MaskEditDialog(image: Mat, private val mask: Mat ) : DialogFragment() {
 
         binding.imageView.setBitmap(imageBitmap)
         binding.maskView.setBitmap(maskBitmap)
+
+        setHasOptionsMenu(true)
 
         return binding.root
     }

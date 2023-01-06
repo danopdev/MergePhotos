@@ -74,7 +74,7 @@ void Mat_to_vector_Mat(cv::Mat &mat, std::vector<cv::Mat> &v_mat) {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv */*env*/, jobject /*thiz*/,
+Java_com_dan_mergephotos_MainFragment_00024Companion_makePanoramaNative(JNIEnv */*env*/, jobject /*thiz*/,
                                                                 jlong images_nativeObj,
                                                                 jlong panorama_nativeObj,
                                                                 jlong mask_nativeObj,
@@ -119,7 +119,7 @@ Java_com_dan_mergephotos_MainActivity_00024Companion_makePanoramaNative(JNIEnv *
 
 
 JNIEXPORT jboolean JNICALL
-Java_com_dan_mergephotos_MainActivity_00024Companion_makeLongExposureNearestNative(
+Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureNearestNative(
         JNIEnv */*env*/, jobject /*thiz*/, jlong images_nativeObj, jlong averageImage_nativeObj, jlong outputImage_nativeObj) {
 
     std::vector<Mat> images;
