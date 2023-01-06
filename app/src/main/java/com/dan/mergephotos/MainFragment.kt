@@ -1,13 +1,11 @@
 package com.dan.mergephotos
 
-
-import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
 import android.os.Parcelable
-import android.provider.MediaStore
 import android.view.*
 import android.widget.AdapterView
 import androidx.appcompat.app.AppCompatActivity
@@ -622,13 +620,9 @@ class MainFragment(private val activity: MainActivity) : Fragment() {
                     }
 
                     //Add it to gallery
-                    val values = ContentValues()
-                    @Suppress("DEPRECATION")
-                    values.put(MediaStore.Images.Media.DATA, fileFullPath)
-                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/${outputExtension}")
-                    activity.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    MediaScannerConnection.scanFile(context, arrayOf(fileFullPath), null, null)
 
-                    showToast("Saved to: ${fileName}")
+                    showToast("Saved to: $fileName")
                 } catch (e: Exception) {
                     showToast("Failed to save")
                 }
