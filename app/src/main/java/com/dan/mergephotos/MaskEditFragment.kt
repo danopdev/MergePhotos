@@ -4,7 +4,6 @@ import android.graphics.*
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.view.*
-import androidx.fragment.app.DialogFragment
 import com.dan.mergephotos.databinding.MaskEditFragmentBinding
 import org.opencv.android.Utils
 import org.opencv.core.Core.*
@@ -12,7 +11,7 @@ import org.opencv.core.CvType
 import org.opencv.core.Mat
 
 
-class MaskEditFragment(private val activity: MainActivity, image: Mat, private val mask: Mat, private val onOKListener: ()->Unit ) : DialogFragment() {
+class MaskEditFragment(activity: MainActivity, image: Mat, private val mask: Mat, private val onOKListener: ()->Unit ) : AppFragment(activity) {
 
     companion object {
         private const val RADIUS = 50f //dp
@@ -133,32 +132,19 @@ class MaskEditFragment(private val activity: MainActivity, image: Mat, private v
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
-        inflater.inflate(R.menu.ok_menu, menu)
-    }
+    override fun onBack(homeButton: Boolean) {
+        if (!homeButton) return
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when(item.itemId) {
-            R.id.ok -> {
-                val maskMat = Mat()
-                Utils.bitmapToMat(maskBitmap, maskMat)
-                val channels = mutableListOf<Mat>()
-                split(maskMat, channels)
-                val maskChannel = channels[0]
+        val maskMat = Mat()
+        Utils.bitmapToMat(maskBitmap, maskMat)
+        val channels = mutableListOf<Mat>()
+        split(maskMat, channels)
+        val maskChannel = channels[0]
 
-                if (mask.empty()) mask.create(maskChannel.rows(), maskChannel.cols(), CvType.CV_8UC1)
-                maskChannel.copyTo(mask)
+        if (mask.empty()) mask.create(maskChannel.rows(), maskChannel.cols(), CvType.CV_8UC1)
+        maskChannel.copyTo(mask)
 
-                onOKListener.invoke()
-
-                activity.popView()
-
-                return true
-            }
-        }
-
-        return super.onOptionsItemSelected(item)
+        onOKListener.invoke()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -172,8 +158,6 @@ class MaskEditFragment(private val activity: MainActivity, image: Mat, private v
 
         binding.imageView.setBitmap(imageBitmap)
         binding.maskView.setBitmap(maskBitmap)
-
-        setHasOptionsMenu(true)
 
         return binding.root
     }

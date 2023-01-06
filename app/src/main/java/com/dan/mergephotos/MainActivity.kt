@@ -10,7 +10,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
 import org.opencv.android.OpenCVLoader
 
 
@@ -22,25 +21,24 @@ class MainActivity : AppCompatActivity() {
         )
 
         const val REQUEST_PERMISSIONS = 1
-        //const val INTENT_OPEN_IMAGES = 2
     }
 
-    private val stack = mutableListOf<Pair<String, Fragment>>()
+    private val stack = mutableListOf<Pair<String, AppFragment>>()
     val settings: Settings by lazy { Settings(this) }
 
     init {
         BusyDialog.create(this)
     }
 
-    fun popView(): Boolean {
+    private fun popView(homeButton: Boolean = false): Boolean {
         if (stack.size <= 1) return false
 
         val prevFragment = stack.removeLast().second
-        val item: Pair<String, Fragment> = stack.last()
+        val item = stack.last()
+
+        prevFragment.onBack(homeButton)
 
         val transaction = supportFragmentManager.beginTransaction()
-        //transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_CLOSE)
-        //transaction.setCustomAnimations(android.R.anim.slide_out_right, android.R.anim.slide_in_left)
         transaction.show(item.second)
         transaction.remove(prevFragment)
         transaction.commit()
@@ -51,14 +49,12 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    fun pushView(title: String, fragment: Fragment) {
-        val prevFragment: Fragment? = if (stack.isEmpty()) null else stack.last().second
+    fun pushView(title: String, fragment: AppFragment) {
+        val prevFragment: AppFragment? = if (stack.isEmpty()) null else stack.last().second
 
         stack.add( Pair(title, fragment) )
 
         val transaction = supportFragmentManager.beginTransaction()
-        //transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-        //if (stack.size > 1) transaction.setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_in_left)
         if (null != prevFragment) transaction.hide(prevFragment)
         transaction.add(R.id.app_fragment, fragment)
         transaction.commit()
@@ -86,7 +82,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (android.R.id.home == item.itemId) {
-            popView()
+            popView(true)
             return true
         }
 
@@ -94,7 +90,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (!popView()) super.onBackPressed()
+        if (!popView( false)) super.onBackPressed()
     }
 
     fun showToast(message: String) {
@@ -148,6 +144,6 @@ class MainActivity : AppCompatActivity() {
         System.loadLibrary("native-lib")
 
         setContentView(R.layout.activity_main)
-        pushView( "MergePhotos", MainFragment(this) )
+        MainFragment.show(this)
     }
 }

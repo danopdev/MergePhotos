@@ -11,7 +11,6 @@ import android.widget.AdapterView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.documentfile.provider.DocumentFile
-import androidx.fragment.app.Fragment
 import com.dan.mergephotos.databinding.MainFragmentBinding
 import org.opencv.android.Utils
 import org.opencv.calib3d.Calib3d
@@ -26,8 +25,7 @@ import org.opencv.xphoto.Xphoto
 import java.io.File
 import kotlin.concurrent.timer
 
-
-class MainFragment(private val activity: MainActivity) : Fragment() {
+class MainFragment(activity: MainActivity) : AppFragment(activity) {
     companion object {
         private const val INTENT_OPEN_IMAGES = 2
 
@@ -41,12 +39,12 @@ class MainFragment(private val activity: MainActivity) : Fragment() {
         const val ALPHA_8_TO_16 = 256.0
         const val ALPHA_16_TO_8 = 1.0 / ALPHA_8_TO_16
 
-        fun makePanorama(images: List<Mat>, panorama: Mat, mask: Mat?, projection: Int): Boolean {
+        private fun makePanorama(images: List<Mat>, panorama: Mat, mask: Mat?, projection: Int): Boolean {
             val imagesMat = Converters.vector_Mat_to_Mat(images)
             return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, mask?.nativeObj ?: 0, projection)
         }
 
-        fun makeLongExposureNearest(
+        private fun makeLongExposureNearest(
             images: List<Mat>,
             averageImage: Mat,
             outputImage: Mat
@@ -66,6 +64,11 @@ class MainFragment(private val activity: MainActivity) : Fragment() {
             averageImage: Long,
             outputImage: Long
         ): Boolean
+
+        fun show(activity: MainActivity) {
+            activity.pushView("Merge Photos", MainFragment(activity))
+        }
+
     }
 
     private lateinit var binding: MainFragmentBinding
@@ -203,10 +206,6 @@ class MainFragment(private val activity: MainActivity) : Fragment() {
                 l.invoke()
             }
         }
-    }
-
-    private fun showToast(message: String) {
-        activity.showToast(message)
     }
 
     private fun showNotEnoughImagesToast() {

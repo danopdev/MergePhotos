@@ -3,11 +3,10 @@ package com.dan.mergephotos
 import android.os.Bundle
 import android.view.*
 import android.widget.SeekBar
-import androidx.fragment.app.Fragment
 import com.dan.mergephotos.databinding.SettingsFragmentBinding
 
 
-class SettingsFragment(private val activity: MainActivity ) : Fragment() {
+class SettingsFragment(activity: MainActivity ) : AppFragment(activity) {
 
     companion object {
         private const val JPEG_QUALITY_BASE = 60
@@ -20,31 +19,19 @@ class SettingsFragment(private val activity: MainActivity ) : Fragment() {
 
     private lateinit var binding: SettingsFragmentBinding
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
-        inflater.inflate(R.menu.ok_menu, menu)
-    }
+    override fun onBack(homeButton: Boolean) {
+        if (!homeButton) return
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when(item.itemId) {
-            R.id.ok -> {
-                if (binding.radioPng.isChecked) activity.settings.outputType = Settings.OUTPUT_TYPE_PNG
-                else if (binding.radioTiff.isChecked) activity.settings.outputType = Settings.OUTPUT_TYPE_TIFF
-                else activity.settings.outputType = Settings.OUTPUT_TYPE_JPEG
+        if (binding.radioPng.isChecked) activity.settings.outputType = Settings.OUTPUT_TYPE_PNG
+        else if (binding.radioTiff.isChecked) activity.settings.outputType = Settings.OUTPUT_TYPE_TIFF
+        else activity.settings.outputType = Settings.OUTPUT_TYPE_JPEG
 
-                activity.settings.jpegQuality = JPEG_QUALITY_BASE + binding.seekBarJpegQuality.progress * JPEG_QUALITY_TICK
-                activity.settings.pngDepth = binding.spinnerPngDepth.selectedItemPosition
-                activity.settings.tiffDepth = binding.spinnerTiffDepth.selectedItemPosition
-                activity.settings.engineDepth = binding.spinnerEngineDepth.selectedItemPosition
+        activity.settings.jpegQuality = JPEG_QUALITY_BASE + binding.seekBarJpegQuality.progress * JPEG_QUALITY_TICK
+        activity.settings.pngDepth = binding.spinnerPngDepth.selectedItemPosition
+        activity.settings.tiffDepth = binding.spinnerTiffDepth.selectedItemPosition
+        activity.settings.engineDepth = binding.spinnerEngineDepth.selectedItemPosition
 
-                activity.settings.saveProperties()
-
-                activity.popView()
-                return true
-            }
-        }
-
-        return super.onOptionsItemSelected(item)
+        activity.settings.saveProperties()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -79,8 +66,6 @@ class SettingsFragment(private val activity: MainActivity ) : Fragment() {
             override fun onStopTrackingTouch(p0: SeekBar?) {
             }
         })
-
-        setHasOptionsMenu(true)
 
         return binding.root
     }
