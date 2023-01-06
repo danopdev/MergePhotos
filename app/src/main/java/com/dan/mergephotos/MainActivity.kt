@@ -97,34 +97,6 @@ class MainActivity : AppCompatActivity() {
         if (!popView()) super.onBackPressed()
     }
 
-    /*
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when(item.itemId) {
-            R.id.loadImages -> {
-                startActivityToOpenImages()
-                return true
-            }
-
-            R.id.save -> {
-                mergePhotosBig()
-                return true
-            }
-
-            R.id.settings -> {
-                SettingsDialog.show(this)
-                return true
-            }
-        }
-
-        return super.onOptionsItemSelected(item)
-    }
-     */
-
     fun showToast(message: String) {
         Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
     }
