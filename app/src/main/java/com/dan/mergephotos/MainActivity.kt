@@ -176,6 +176,6 @@ class MainActivity : AppCompatActivity() {
         System.loadLibrary("native-lib")
 
         setContentView(R.layout.activity_main)
-        pushView( "Perspective", MainFragment(this) )
+        pushView( "MergePhotos", MainFragment(this) )
     }
 }
