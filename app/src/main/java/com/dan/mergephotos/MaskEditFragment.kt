@@ -19,21 +19,6 @@ class MaskEditFragment(activity: MainActivity, image: Mat, private val mask: Mat
         fun show(activity: MainActivity, image: Mat, mask: Mat, onOKListener: ()->Unit ) {
             activity.pushView( "Edit Mask", MaskEditFragment( activity, image, mask, onOKListener ) )
         }
-
-        private fun matToBitmap( image: Mat, bitmap: Bitmap ) {
-            val image8: Mat
-            if (CvType.CV_16UC3 == image.type()) {
-                image8 = Mat()
-                image.convertTo(image8, CvType.CV_8UC3, MainFragment.ALPHA_16_TO_8)
-            } else if (CvType.CV_8UC1 == image.type()) {
-                image8 = Mat()
-                merge(listOf(image, image, image), image8)
-            } else {
-                image8 = image
-            }
-
-            Utils.matToBitmap(image8, bitmap)
-        }
     }
 
     private lateinit var binding: MaskEditFragmentBinding
@@ -103,11 +88,11 @@ class MaskEditFragment(activity: MainActivity, image: Mat, private val mask: Mat
     )
 
     init {
-        matToBitmap(image, imageBitmap)
+        Utils.matToBitmap(image, imageBitmap)
         if (!mask.empty()) {
-            matToBitmap(mask, maskBitmap)
+            Utils.matToBitmap(mask, maskBitmap)
         } else {
-            matToBitmap(Mat.zeros(image.rows(), image.cols(), CvType.CV_8UC1), maskBitmap)
+            Utils.matToBitmap(Mat.zeros(image.rows(), image.cols(), CvType.CV_8UC1), maskBitmap)
         }
 
         paint.isAntiAlias = false
@@ -140,9 +125,15 @@ class MaskEditFragment(activity: MainActivity, image: Mat, private val mask: Mat
         val channels = mutableListOf<Mat>()
         split(maskMat, channels)
         val maskChannel = channels[0]
+        val maskIsEmpty = 0 == countNonZero(maskChannel)
+        if (mask.empty() && maskIsEmpty) return
 
-        if (mask.empty()) mask.create(maskChannel.rows(), maskChannel.cols(), CvType.CV_8UC1)
-        maskChannel.copyTo(mask)
+        if (maskIsEmpty) {
+            mask.release()
+        } else {
+            if (mask.empty()) mask.create(maskChannel.rows(), maskChannel.cols(), CvType.CV_8UC1)
+            maskChannel.copyTo(mask)
+        }
 
         onOKListener.invoke()
     }

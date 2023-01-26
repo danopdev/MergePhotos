@@ -35,9 +35,6 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         private const val CACHE_MASK_SUFFIX = ".Mask"
         private const val CACHE_IMAGES_AVERAGE_SUFFIX = ".Average"
 
-        const val ALPHA_8_TO_16 = 256.0
-        const val ALPHA_16_TO_8 = 1.0 / ALPHA_8_TO_16
-
         private fun makePanorama(images: List<Mat>, panorama: Mat, projection: Int): Boolean {
             val imagesMat = Converters.vector_Mat_to_Mat(images)
             return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, projection)
@@ -274,13 +271,6 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
     private fun toGrayImage(image: Mat): Mat {
         val grayMat = Mat()
         Imgproc.cvtColor(image, grayMat, Imgproc.COLOR_BGR2GRAY)
-
-        if (CvType.CV_16UC1 == grayMat.type()) {
-            val grayMat8 = Mat()
-            grayMat.convertTo(grayMat8, CvType.CV_8UC1, ALPHA_16_TO_8)
-            return grayMat8
-        }
-
         return grayMat
     }
 
@@ -385,10 +375,10 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
 
             if (inputImages.size >= 2) {
                 val floatMat = Mat()
-                inputImages[0].convertTo(floatMat, CvType.CV_32FC3)
+                inputImages[0].convertTo(floatMat, CvType.CV_16UC3)
 
                 for (imageIndex in 1 until inputImages.size) {
-                    Core.add(floatMat, inputImages[imageIndex], floatMat, Mat(), CvType.CV_32FC3)
+                    Core.add(floatMat, inputImages[imageIndex], floatMat, Mat(), CvType.CV_16UC3)
                 }
 
                 floatMat.convertTo(output, inputImages[0].type(), 1.0 / inputImages.size.toDouble())
@@ -490,16 +480,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                     Bitmap.Config.ARGB_8888
                 )
 
-                //make sure it's 8 bits per channel
-                val image8BitsPerChannel: Mat
-                if (CvType.CV_16UC3 == outputImage.type()) {
-                    image8BitsPerChannel = Mat()
-                    outputImage.convertTo(image8BitsPerChannel, CvType.CV_8UC3, ALPHA_16_TO_8)
-                } else {
-                    image8BitsPerChannel = outputImage
-                }
-
-                Utils.matToBitmap(image8BitsPerChannel, bitmap)
+                Utils.matToBitmap(outputImage, bitmap)
                 setBitmap(bitmap)
             }
         }
