@@ -27,9 +27,6 @@ class SettingsFragment(activity: MainActivity ) : AppFragment(activity) {
         else activity.settings.outputType = Settings.OUTPUT_TYPE_JPEG
 
         activity.settings.jpegQuality = JPEG_QUALITY_BASE + binding.seekBarJpegQuality.progress * JPEG_QUALITY_TICK
-        activity.settings.pngDepth = binding.spinnerPngDepth.selectedItemPosition
-        activity.settings.tiffDepth = binding.spinnerTiffDepth.selectedItemPosition
-        activity.settings.engineDepth = binding.spinnerEngineDepth.selectedItemPosition
 
         activity.settings.saveProperties()
     }
@@ -49,10 +46,6 @@ class SettingsFragment(activity: MainActivity ) : AppFragment(activity) {
         val jpegTick = (alignedJpegQuality - JPEG_QUALITY_BASE) / JPEG_QUALITY_TICK
         binding.seekBarJpegQuality.progress = jpegTick
         binding.txtJpegQuality.text = alignedJpegQuality.toString()
-
-        binding.spinnerPngDepth.setSelection(activity.settings.pngDepth)
-        binding.spinnerTiffDepth.setSelection(activity.settings.tiffDepth)
-        binding.spinnerEngineDepth.setSelection(activity.settings.engineDepth)
 
         binding.seekBarJpegQuality.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, progress: Int, p2: Boolean) {

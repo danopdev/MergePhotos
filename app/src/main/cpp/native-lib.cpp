@@ -7,34 +7,28 @@
 using namespace cv;
 
 
-typedef Point3_<uchar> Point3uint8;
-typedef Point3_<ushort> Point3uint16;
-
-
-template<typename T>
-inline static unsigned int calculateColorDelta(const T* a, const T* b) {
+inline static unsigned int calculateColorDelta(const Point3_<uchar>* a, const Point3_<uchar>* b) {
     return abs(a->x - b->x) + abs(a->y - b->y) + abs(a->z - b->z);
 }
 
 
-template<typename T>
 static bool makeLongExposureNearestNative( std::vector<Mat> &images, const Mat &averageImage, Mat &outputImage) {
-    const T *meanImageIt = averageImage.ptr<T>(0);
-    std::vector<const T*> imageIterators;
+    const auto *meanImageIt = averageImage.ptr<Point3_<uchar>>(0);
+    std::vector<const Point3_<uchar>*> imageIterators;
 
-    for (const auto image: images) {
+    for (const auto& image: images) {
         if (!image.isContinuous() || image.size != averageImage.size || image.type() != averageImage.type() ) return false;
-        imageIterators.push_back(image.ptr<const T>(0));
+        imageIterators.push_back(image.ptr<const Point3_<uchar>>(0));
     }
 
     outputImage.create(averageImage.rows, averageImage.cols, averageImage.type());
     if (outputImage.empty()) return false;
 
-    T* outputImageIt = outputImage.ptr<T>(0);
+    auto outputImageIt = outputImage.ptr<Point3_<uchar>>(0);
 
     for (int row = 0; row < averageImage.rows; row++) {
         for (int col = 0; col < averageImage.cols; col++, meanImageIt++, outputImageIt++) {
-            const T* nearestImageIt = meanImageIt;
+            const Point3_<uchar>* nearestImageIt = meanImageIt;
             unsigned int nearestDelta = UINT_MAX;
 
             for (auto& imageIt: imageIterators) {
@@ -128,11 +122,7 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureNearestNati
          || !(averageImage.type() == CV_8UC3 || averageImage.type() == CV_16UC3))
         return false;
 
-    if ( CV_16UC3 == averageImage.type() ) {
-        return makeLongExposureNearestNative<Point3uint16>(images, averageImage, outputImage);
-    }
-
-    return makeLongExposureNearestNative<Point3uint8>(images, averageImage, outputImage);
+    return makeLongExposureNearestNative(images, averageImage, outputImage);
 }
 
 }

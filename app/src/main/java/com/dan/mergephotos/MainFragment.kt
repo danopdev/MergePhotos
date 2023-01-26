@@ -140,8 +140,6 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
 
         runFakeAsync {
             var nameFound = false
-            var has8BitsImages = false
-            var has16BitsImages = false
 
             for (uri in uriList) {
                 val image = loadImage(uri) ?: continue
@@ -162,20 +160,11 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                 }
 
                 imagesBig.add(image)
-
-                if (CvType.CV_8UC3 == image.type()) has8BitsImages = true
-                if (CvType.CV_16UC3 == image.type()) has16BitsImages = true
             }
 
             if (imagesBig.size < 2) {
                 showNotEnoughImagesToast()
             } else {
-                if (has8BitsImages && has16BitsImages) {
-                    for (i in 0 until imagesBig.size) {
-                        imagesBig[i] = convertToDepth(imagesBig[i], Settings.DEPTH_16_BITS)
-                    }
-                }
-
                 for (image in imagesBig) {
                     imagesSmall.add(createSmallImage(image))
                 }
@@ -245,28 +234,6 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         return imageSmall
     }
 
-    private fun convertToDepth(image: Mat, depth: Int ) : Mat {
-        when( depth ) {
-            Settings.DEPTH_8_BITS -> {
-                if (CvType.CV_16UC3 == image.type()) {
-                    val newImage = Mat()
-                    image.convertTo(newImage, CvType.CV_8UC3, ALPHA_16_TO_8)
-                    return newImage
-                }
-            }
-
-            Settings.DEPTH_16_BITS -> {
-                if (CvType.CV_8UC3 == image.type()) {
-                    val newImage = Mat()
-                    image.convertTo(newImage, CvType.CV_16UC3, ALPHA_8_TO_16)
-                    return newImage
-                }
-            }
-        }
-
-        return image
-    }
-
     private fun loadImage(uri: Uri) : Mat? {
         // Can't create MatOfByte from kotlin ByteArray, but works correctly from java byte[]
         val image = OpenCVLoadImageFromUri.load(uri, activity.contentResolver) ?: return null
@@ -275,12 +242,12 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         val imageRGB = Mat()
 
         when(image.type()) {
-            CvType.CV_8UC3, CvType.CV_16UC3 -> Imgproc.cvtColor(
+            CvType.CV_8UC3 -> Imgproc.cvtColor(
                 image,
                 imageRGB,
                 Imgproc.COLOR_BGR2RGB
             )
-            CvType.CV_8UC4, CvType.CV_16UC4 -> Imgproc.cvtColor(
+            CvType.CV_8UC4 -> Imgproc.cvtColor(
                 image,
                 imageRGB,
                 Imgproc.COLOR_BGRA2RGB
@@ -288,7 +255,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
             else -> return null
         }
 
-        return convertToDepth(imageRGB, activity.settings.engineDepth)
+        return imageRGB
     }
 
     private fun mergePanorama(prefix: String): Pair<List<Mat>, String> {
@@ -569,19 +536,6 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                     val outputRGB = Mat()
                     Imgproc.cvtColor(outputImage, outputRGB, Imgproc.COLOR_BGR2RGB)
 
-                    var outputDepth = Settings.DEPTH_AUTO
-
-                    if ( Settings.OUTPUT_TYPE_JPEG == activity.settings.outputType
-                        || (Settings.OUTPUT_TYPE_PNG == activity.settings.outputType && Settings.DEPTH_8_BITS == activity.settings.pngDepth)
-                        || (Settings.OUTPUT_TYPE_TIFF == activity.settings.outputType && Settings.DEPTH_8_BITS == activity.settings.tiffDepth)
-                    ) {
-                        outputDepth = Settings.DEPTH_8_BITS
-                    } else if ( (Settings.OUTPUT_TYPE_PNG == activity.settings.outputType && Settings.DEPTH_16_BITS == activity.settings.pngDepth)
-                        || (Settings.OUTPUT_TYPE_TIFF == activity.settings.outputType && Settings.DEPTH_16_BITS == activity.settings.tiffDepth)
-                    ) {
-                        outputDepth = Settings.DEPTH_16_BITS
-                    }
-
                     File(fileFullPath).parentFile?.mkdirs()
 
                     val outputParams = MatOfInt()
@@ -590,11 +544,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                         outputParams.fromArray(Imgcodecs.IMWRITE_JPEG_QUALITY, activity.settings.jpegQuality )
                     }
 
-                    Imgcodecs.imwrite(
-                        fileFullPath,
-                        convertToDepth(outputRGB, outputDepth),
-                        outputParams
-                    )
+                    Imgcodecs.imwrite( fileFullPath, outputRGB, outputParams )
 
                     //copy exif tags
                     firstSourceUri?.let { uri ->
