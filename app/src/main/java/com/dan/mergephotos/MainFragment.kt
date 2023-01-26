@@ -511,13 +511,10 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                 }
 
                 try {
-                    val outputRGB = Mat()
-                    Imgproc.cvtColor(outputImage, outputRGB, Imgproc.COLOR_BGR2RGB)
-
                     file.parentFile?.mkdirs()
 
-                    val bitmap = Bitmap.createBitmap( outputRGB.width(), outputRGB.height(), Bitmap.Config.ARGB_8888 )
-                    Utils.matToBitmap(outputRGB, bitmap)
+                    val bitmap = Bitmap.createBitmap( outputImage.width(), outputImage.height(), Bitmap.Config.ARGB_8888 )
+                    Utils.matToBitmap(outputImage, bitmap)
                     val outputStream = file.outputStream()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, settings.jpegQuality, outputStream)
                     outputStream.close()
