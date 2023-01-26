@@ -31,7 +31,6 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         private const val CACHE_IMAGES = "Big"
         private const val CACHE_IMAGES_SMALL = "Small"
         private const val CACHE_IMAGES_ALIGNED_SUFFIX = ".Aligned"
-        private const val CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX = ".AlignedWithMask"
         private const val CACHE_MASK_SUFFIX = ".Mask"
         private const val CACHE_IMAGES_AVERAGE_SUFFIX = ".Average"
 
@@ -292,13 +291,10 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
     private fun alignImages(prefix: String): Pair<List<Mat>, String> {
         val inputImages = cache[prefix] ?: mutableListOf()
 
-        val masks = cache[prefix + CACHE_MASK_SUFFIX]
-        val useMask = binding.checkBoxUseMask.isChecked && null != masks && masks.isNotEmpty()
-        val suffix = if (useMask) CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX else CACHE_IMAGES_ALIGNED_SUFFIX
-
-        var alignedImages = cache[prefix + suffix]
+        var alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
         if (null == alignedImages) {
-            val mask = if (useMask && null != masks && masks.isNotEmpty()) masks[0] else Mat()
+            val masks = cache[prefix + CACHE_MASK_SUFFIX]
+            val mask = if (null != masks && masks.isNotEmpty()) masks[0] else Mat()
 
             alignedImages = mutableListOf()
 
@@ -346,7 +342,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                 if (!alignedImage.empty()) alignedImages.add(alignedImage)
             }
 
-            cache[prefix + suffix] = alignedImages
+            cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX] = alignedImages
         }
 
         if (alignedImages.size < 2) {
@@ -358,14 +354,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
 
     private fun calculateAverage(prefix: String): List<Mat> {
         val alignImages = binding.checkBoxAlign.isChecked
-        val useMask = alignImages && binding.checkBoxUseMask.isChecked
-
-        val cacheKeySuffix = when {
-            useMask -> CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX
-            alignImages -> CACHE_IMAGES_ALIGNED_SUFFIX
-            else -> ""
-        }
-        val cacheKey = prefix + CACHE_IMAGES_AVERAGE_SUFFIX + cacheKeySuffix
+        val cacheKey = prefix + CACHE_IMAGES_AVERAGE_SUFFIX
         var averageImages = cache[cacheKey]
 
         if (null == averageImages) {
@@ -551,11 +540,17 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         }
     }
 
+    private fun cleanUpAlignedImages() {
+        cache.remove(CACHE_IMAGES + CACHE_IMAGES_ALIGNED_SUFFIX)
+        cache.remove(CACHE_IMAGES_SMALL + CACHE_IMAGES_ALIGNED_SUFFIX)
+        cache.remove(CACHE_IMAGES + CACHE_IMAGES_AVERAGE_SUFFIX)
+        cache.remove(CACHE_IMAGES_SMALL + CACHE_IMAGES_AVERAGE_SUFFIX)
+    }
+
     private fun editMask() {
         val images = cache[CACHE_IMAGES]
         if (null == images || images.isEmpty()) return
         if (!binding.checkBoxAlign.isChecked) return
-        if (!binding.checkBoxUseMask.isChecked) return
 
         var mask = Mat()
         val masks = cache[CACHE_IMAGES + CACHE_MASK_SUFFIX]
@@ -564,11 +559,8 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         }
 
         MaskEditFragment.show(activity, images[0], mask) {
+            cleanUpAlignedImages()
             val maskSmall = createSmallImage(mask, true)
-            cache.remove(CACHE_IMAGES + CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX)
-            cache.remove(CACHE_IMAGES_SMALL + CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX)
-            cache.remove(CACHE_IMAGES + CACHE_IMAGES_AVERAGE_SUFFIX + CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX)
-            cache.remove(CACHE_IMAGES_SMALL + CACHE_IMAGES_AVERAGE_SUFFIX + CACHE_IMAGES_ALIGNED_WITH_MASK_SUFFIX)
             cache[CACHE_IMAGES + CACHE_MASK_SUFFIX] = mutableListOf(mask)
             cache[CACHE_IMAGES_SMALL + CACHE_MASK_SUFFIX] = mutableListOf(maskSmall)
             mergePhotosSmall()
@@ -590,8 +582,11 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         binding.panoramaProjection.setSelection( if (settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else settings.panoramaProjection )
         binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
 
-        binding.checkBoxAlign.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
-        binding.checkBoxUseMask.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
+        binding.checkBoxAlign.setOnCheckedChangeListener { _, isChecked ->
+            binding.btnEditMask.isEnabled = isChecked
+            cleanUpAlignedImages()
+            mergePhotosSmall()
+        }
         binding.btnEditMask.setOnClickListener { editMask() }
 
         if (activity.intent?.action == Intent.ACTION_SEND_MULTIPLE && activity.intent.type?.startsWith("image/") == true) {

@@ -107,17 +107,14 @@
                 android:checked="true"
                 android:text="Align" />
 
-            <CheckBox
-                android:id="@+id/checkBoxUseMask"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="UseMask" />
-
-            <ImageButton
+            <Button
                 android:id="@+id/btnEditMask"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:srcCompat="@android:drawable/ic_menu_edit" />
+                android:layout_weight="1"
+                android:text="Edit Mask"
+                android:textAllCaps="false" />
 
         </LinearLayout>
 
