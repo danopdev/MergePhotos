@@ -2,6 +2,7 @@ package com.dan.mergephotos
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
@@ -17,7 +18,6 @@ import org.opencv.calib3d.Calib3d
 import org.opencv.core.*
 import org.opencv.features2d.BFMatcher
 import org.opencv.features2d.ORB
-import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import org.opencv.photo.Photo
 import org.opencv.utils.Converters
@@ -235,25 +235,20 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
     }
 
     private fun loadImage(uri: Uri) : Mat? {
-        // Can't create MatOfByte from kotlin ByteArray, but works correctly from java byte[]
-        val image = OpenCVLoadImageFromUri.load(uri, activity.contentResolver) ?: return null
+        val inputStream = requireContext().contentResolver.openInputStream(uri) ?: return null
+        val bitmap = BitmapFactory.decodeStream(inputStream)
+        inputStream.close()
+        if (null == bitmap)  return null
+
+        val image = Mat()
+        Utils.bitmapToMat(bitmap, image)
         if (image.empty()) return null
 
         val imageRGB = Mat()
-
-        when(image.type()) {
-            CvType.CV_8UC3 -> Imgproc.cvtColor(
-                image,
-                imageRGB,
-                Imgproc.COLOR_BGR2RGB
-            )
-            CvType.CV_8UC4 -> Imgproc.cvtColor(
-                image,
-                imageRGB,
-                Imgproc.COLOR_BGRA2RGB
-            )
-            else -> return null
-        }
+        Imgproc.cvtColor(
+            image,
+            imageRGB,
+            Imgproc.COLOR_RGBA2RGB)
 
         return imageRGB
     }
@@ -522,37 +517,44 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
             BusyDialog.show(requireFragmentManager(), "Saving")
 
             for (outputImage in outputImages) {
-                try {
-                    var fileName = "${outputName}_${name}.${outputExtension}"
-                    var fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
-                    var counter = 0
-                    while (File(fileFullPath).exists() && counter < 998) {
-                        counter++
-                        val counterStr = "%03d".format(counter)
-                        fileName = "${outputName}_${name}_${counterStr}.${outputExtension}"
-                        fileFullPath = Settings.SAVE_FOLDER + "/" + fileName
-                    }
+                var fileName = "${outputName}_${name}.${outputExtension}"
+                var file = File(Settings.SAVE_FOLDER, fileName)
+                var counter = 0
+                while (file.exists() && counter < 998) {
+                    counter++
+                    val counterStr = "%03d".format(counter)
+                    fileName = "${outputName}_${name}_${counterStr}.${outputExtension}"
+                    file = File(Settings.SAVE_FOLDER, fileName)
+                }
 
+                try {
                     val outputRGB = Mat()
                     Imgproc.cvtColor(outputImage, outputRGB, Imgproc.COLOR_BGR2RGB)
 
-                    File(fileFullPath).parentFile?.mkdirs()
+                    file.parentFile?.mkdirs()
 
-                    val outputParams = MatOfInt()
-                    outputParams.fromArray(Imgcodecs.IMWRITE_JPEG_QUALITY, settings.jpegQuality )
-                    Imgcodecs.imwrite( fileFullPath, outputRGB, outputParams )
+                    val bitmap = Bitmap.createBitmap( outputRGB.width(), outputRGB.height(), Bitmap.Config.ARGB_8888 )
+                    Utils.matToBitmap(outputRGB, bitmap)
+                    val outputStream = file.outputStream()
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, settings.jpegQuality, outputStream)
+                    outputStream.close()
 
                     //copy exif tags
                     firstSourceUri?.let { uri ->
-                        ExifTools.copyExif( activity.contentResolver, uri, fileFullPath )
+                        ExifTools.copyExif(activity.contentResolver, uri, file)
                     }
 
                     //Add it to gallery
-                    MediaScannerConnection.scanFile(context, arrayOf(fileFullPath), null, null)
+                    MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null, null)
 
-                    showToast("Saved to: $fileName")
                 } catch (e: Exception) {
-                    showToast("Failed to save")
+                    e.printStackTrace()
+                }
+
+                if (file.exists()) {
+                    showToast("Saved to: $fileName")
+                } else {
+                    showToast("Save failed")
                 }
             }
             BusyDialog.dismiss()

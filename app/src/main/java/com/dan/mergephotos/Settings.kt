@@ -3,6 +3,8 @@ package com.dan.mergephotos
 
 import android.app.Activity
 import android.content.Context
+import android.os.Environment
+import java.io.File
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.createType
@@ -14,11 +16,11 @@ Settings: all public var fields will be saved
 class Settings( private val activity: Activity) {
 
     companion object {
-        const val SAVE_FOLDER = "/storage/emulated/0/Pictures/MergePhotos"
-        const val IMG_SIZE_SMALL = 1024
+        val SAVE_FOLDER = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "MergePhotos")
         const val DEFAULT_NAME = "output"
-
         const val EXT_JPEG = "jpeg"
+
+        const val IMG_SIZE_SMALL = 1024
 
         const val MERGE_PANORAMA = 0
         const val MERGE_LONG_EXPOSURE = 1

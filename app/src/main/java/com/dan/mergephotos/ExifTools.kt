@@ -3,14 +3,14 @@ package com.dan.mergephotos
 import android.content.ContentResolver
 import androidx.exifinterface.media.ExifInterface
 import android.net.Uri
-import java.io.InputStream
+import java.io.File
 import java.lang.Exception
 
 
 class ExifTools {
     companion object {
 
-        val EXIF_TAGS = listOf(
+        private val EXIF_TAGS = listOf(
             ExifInterface.TAG_APERTURE_VALUE,
             ExifInterface.TAG_DATETIME,
             ExifInterface.TAG_DATETIME_DIGITIZED,
@@ -82,12 +82,9 @@ class ExifTools {
             ExifInterface.TAG_XMP,
         )
 
-        fun copyExif(contentResolver: ContentResolver, sourceUri: Uri, destinationFile: String ) {
-            var inputStream: InputStream? = null
-
+        fun copyExif(contentResolver: ContentResolver, sourceUri: Uri, destinationFile: File) {
             try {
-                inputStream = contentResolver.openInputStream(sourceUri)
-                if (null != inputStream) {
+                contentResolver.openInputStream(sourceUri)?.let { inputStream ->
                     val exifSource = ExifInterface(inputStream)
                     val exifDestination = ExifInterface(destinationFile)
 
@@ -99,14 +96,11 @@ class ExifTools {
                     }
 
                     exifDestination.saveAttributes()
+                    inputStream.close()
+
                 }
             } catch(e: Exception) {
-            }
-
-            //clean up
-            try {
-                inputStream?.close()
-            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
