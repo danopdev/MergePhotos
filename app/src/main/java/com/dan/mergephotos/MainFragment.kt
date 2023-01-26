@@ -16,9 +16,11 @@ import com.dan.mergephotos.databinding.MainFragmentBinding
 import org.opencv.android.Utils
 import org.opencv.calib3d.Calib3d
 import org.opencv.core.*
+import org.opencv.video.Video.calcOpticalFlowPyrLK
 import org.opencv.features2d.BFMatcher
 import org.opencv.features2d.ORB
 import org.opencv.imgproc.Imgproc
+import org.opencv.imgproc.Imgproc.INTER_LANCZOS4
 import org.opencv.photo.Photo
 import org.opencv.utils.Converters
 import java.io.File
@@ -297,49 +299,56 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
             val mask = if (null != masks && masks.isNotEmpty()) masks[0] else Mat()
 
             alignedImages = mutableListOf()
-
             alignedImages.add(inputImages[0])
-            val orbDetector = ORB.create()
-            val matcher = BFMatcher.create()
-            val refInfo = orbDetectAndCompute(orbDetector, inputImages[0], mask)
-            val refKeyPoints = refInfo.first
-            val refDescriptors = refInfo.second
+
+            val firstFramePts = MatOfPoint()
+            val firstFrameGray = Mat()
+
+            Imgproc.cvtColor(inputImages[0], firstFrameGray, Imgproc.COLOR_RGB2GRAY)
+            Imgproc.goodFeaturesToTrack(firstFrameGray, firstFramePts,200,0.01, 30.0, mask)
+
+            val firstFramePts2f = MatOfPoint2f()
+            firstFramePts2f.fromList(firstFramePts.toList())
 
             for (imageIndex in 1 until inputImages.size) {
-                val info = orbDetectAndCompute(orbDetector, inputImages[imageIndex], mask)
-                val keyPoints = info.first
-                val descriptors = info.second
+                val frameGray = Mat()
+                Imgproc.cvtColor(inputImages[imageIndex], frameGray, Imgproc.COLOR_RGB2GRAY)
 
-                val matches = MatOfDMatch()
-                matcher.match(descriptors, refDescriptors, matches)
-                val listMatches = matches.toList().sortedBy { it.distance }
-                val usedSize = listMatches.size * 80 / 100
-                if (usedSize < 10) continue
+                val framePts2f = MatOfPoint2f()
+                val status = MatOfByte()
+                val err = MatOfFloat()
+                calcOpticalFlowPyrLK(firstFrameGray, frameGray, firstFramePts2f, framePts2f, status, err)
 
-                val listPoints = mutableListOf<Point>()
-                val listRefPoints = mutableListOf<Point>()
-                for (matchIndex in 0 until usedSize) {
-                    val queryIdx = listMatches[matchIndex].queryIdx
-                    val trainIdx = listMatches[matchIndex].trainIdx
-                    listPoints.add(keyPoints[queryIdx].pt)
-                    listRefPoints.add(refKeyPoints[trainIdx].pt)
+                // Filter only valid points
+                val firstFramePts2fList = firstFramePts2f.toList()
+                val framePts2fList = framePts2f.toList()
+                val statusList = status.toList()
+
+                val firstFramePts2fFilteredList = mutableListOf<Point>()
+                val framePts2fFilteredList = mutableListOf<Point>()
+
+                for( i in firstFramePts2fList.indices ) {
+                    if (0.toByte() != statusList[i]) {
+                        firstFramePts2fFilteredList.add(firstFramePts2fList[i])
+                        framePts2fFilteredList.add(framePts2fList[i])
+                    }
                 }
 
-                val matListPoints = MatOfPoint2f()
-                matListPoints.fromList(listPoints)
+                // Find transformation matrix
+                val firstFramePtsMat = MatOfPoint2f()
+                val framePtsMat = MatOfPoint2f()
 
-                val matListRefPoints = MatOfPoint2f()
-                matListRefPoints.fromList(listRefPoints)
+                firstFramePtsMat.fromList(firstFramePts2fFilteredList)
+                framePtsMat.fromList(framePts2fFilteredList)
 
-                val homography =
-                    Calib3d.findHomography(matListPoints, matListRefPoints, Calib3d.RANSAC, 5.0)
-                val alignedImage = Mat()
-                Imgproc.warpPerspective(
-                    inputImages[imageIndex], alignedImage, homography,
-                    Size(inputImages[0].cols().toDouble(), inputImages[0].rows().toDouble()),
-                    Imgproc.INTER_LANCZOS4
-                )
-                if (!alignedImage.empty()) alignedImages.add(alignedImage)
+                val t = Calib3d.estimateAffinePartial2D(framePtsMat, firstFramePtsMat)
+                if (t.empty()) continue //failed to align
+
+                val alignedFrame = Mat()
+                Imgproc.warpAffine(inputImages[imageIndex], alignedFrame, t, inputImages[imageIndex].size(), INTER_LANCZOS4)
+                if (alignedFrame.empty()) continue //failed to warp !
+
+                alignedImages.add(alignedFrame)
             }
 
             cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX] = alignedImages
