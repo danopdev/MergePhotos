@@ -55,6 +55,8 @@ Images are aligned before merging.
 Modes:
 * Average: will make changes looks like ghosts.
 * Nearest to Average (minimum 3 images): will make changes disapear.
+* Light: keep lightest pixels
+* Dark: keep darkest pixels
 
 Input Image 1 | Input Image 2 | Input Image 3
 --- | --- | ---
