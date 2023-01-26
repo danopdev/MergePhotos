@@ -512,12 +512,12 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
 
     private fun mergePhotosBig() {
         mergePhotos(CACHE_IMAGES) { outputImages, name ->
-            activity.settings.mergeMode = binding.spinnerMerge.selectedItemPosition
-            activity.settings.panoramaProjection = binding.panoramaProjection.selectedItemPosition
-            activity.settings.longexposureAlgorithm = binding.longexposureAlgorithm.selectedItemPosition
-            activity.settings.saveProperties()
+            settings.mergeMode = binding.spinnerMerge.selectedItemPosition
+            settings.panoramaProjection = binding.panoramaProjection.selectedItemPosition
+            settings.longexposureAlgorithm = binding.longexposureAlgorithm.selectedItemPosition
+            settings.saveProperties()
 
-            val outputExtension = activity.settings.outputExtension()
+            val outputExtension = Settings.EXT_JPEG
 
             BusyDialog.show(requireFragmentManager(), "Saving")
 
@@ -539,11 +539,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                     File(fileFullPath).parentFile?.mkdirs()
 
                     val outputParams = MatOfInt()
-
-                    if (Settings.OUTPUT_TYPE_JPEG == activity.settings.outputType) {
-                        outputParams.fromArray(Imgcodecs.IMWRITE_JPEG_QUALITY, activity.settings.jpegQuality )
-                    }
-
+                    outputParams.fromArray(Imgcodecs.IMWRITE_JPEG_QUALITY, settings.jpegQuality )
                     Imgcodecs.imwrite( fileFullPath, outputRGB, outputParams )
 
                     //copy exif tags
@@ -607,9 +603,9 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         binding.panoramaProjection.onItemSelectedListener = listenerOnItemSelectedListener
         binding.longexposureAlgorithm.onItemSelectedListener = listenerOnItemSelectedListener
 
-        binding.spinnerMerge.setSelection( if (activity.settings.mergeMode >= binding.spinnerMerge.adapter.count) 0 else activity.settings.mergeMode )
-        binding.panoramaProjection.setSelection( if (activity.settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else activity.settings.panoramaProjection )
-        binding.longexposureAlgorithm.setSelection( if (activity.settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else activity.settings.longexposureAlgorithm )
+        binding.spinnerMerge.setSelection( if (settings.mergeMode >= binding.spinnerMerge.adapter.count) 0 else settings.mergeMode )
+        binding.panoramaProjection.setSelection( if (settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else settings.panoramaProjection )
+        binding.longexposureAlgorithm.setSelection( if (settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else settings.longexposureAlgorithm )
 
         binding.checkBoxAlign.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
         binding.checkBoxUseMask.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }

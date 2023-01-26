@@ -10,7 +10,6 @@ class SettingsFragment(activity: MainActivity ) : AppFragment(activity) {
 
     companion object {
         private const val JPEG_QUALITY_BASE = 60
-        private const val JPEG_QUALITY_TICK = 5
 
         fun show(activity: MainActivity ) {
             activity.pushView("Settings", SettingsFragment( activity ) )
@@ -22,11 +21,7 @@ class SettingsFragment(activity: MainActivity ) : AppFragment(activity) {
     override fun onBack(homeButton: Boolean) {
         if (!homeButton) return
 
-        if (binding.radioPng.isChecked) activity.settings.outputType = Settings.OUTPUT_TYPE_PNG
-        else if (binding.radioTiff.isChecked) activity.settings.outputType = Settings.OUTPUT_TYPE_TIFF
-        else activity.settings.outputType = Settings.OUTPUT_TYPE_JPEG
-
-        activity.settings.jpegQuality = JPEG_QUALITY_BASE + binding.seekBarJpegQuality.progress * JPEG_QUALITY_TICK
+        settings.jpegQuality = JPEG_QUALITY_BASE + (100 - JPEG_QUALITY_BASE) * binding.seekBarJpegQuality.progress / binding.seekBarJpegQuality.max
 
         activity.settings.saveProperties()
     }
@@ -34,22 +29,18 @@ class SettingsFragment(activity: MainActivity ) : AppFragment(activity) {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = SettingsFragmentBinding.inflate( inflater )
 
-        binding.radioPng.isChecked = Settings.OUTPUT_TYPE_PNG == activity.settings.outputType
-        binding.radioTiff.isChecked = Settings.OUTPUT_TYPE_TIFF == activity.settings.outputType
-        binding.radioJpeg.isChecked = ! (binding.radioPng.isChecked || binding.radioTiff.isChecked)
-
-        val alignedJpegQuality = when {
-            activity.settings.jpegQuality > 100 -> 100
-            activity.settings.jpegQuality < JPEG_QUALITY_BASE -> JPEG_QUALITY_BASE
-            else -> (activity.settings.jpegQuality / JPEG_QUALITY_TICK) * JPEG_QUALITY_TICK //round the value to tick size
+        val jpegQualityProgress = when {
+            settings.jpegQuality >= 100 -> binding.seekBarJpegQuality.max
+            settings.jpegQuality < JPEG_QUALITY_BASE -> 0
+            else -> (settings.jpegQuality - JPEG_QUALITY_BASE) * binding.seekBarJpegQuality.max / (100 - JPEG_QUALITY_BASE)
         }
-        val jpegTick = (alignedJpegQuality - JPEG_QUALITY_BASE) / JPEG_QUALITY_TICK
-        binding.seekBarJpegQuality.progress = jpegTick
-        binding.txtJpegQuality.text = alignedJpegQuality.toString()
+
+        binding.seekBarJpegQuality.progress = jpegQualityProgress
+        binding.txtJpegQuality.text = settings.jpegQuality.toString()
 
         binding.seekBarJpegQuality.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, progress: Int, p2: Boolean) {
-                val jpegQuality = JPEG_QUALITY_BASE + progress * JPEG_QUALITY_TICK
+                val jpegQuality = JPEG_QUALITY_BASE + (100 - JPEG_QUALITY_BASE) * progress / binding.seekBarJpegQuality.max
                 binding.txtJpegQuality.text = jpegQuality.toString()
             }
 
