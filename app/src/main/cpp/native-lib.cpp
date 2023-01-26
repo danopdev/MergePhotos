@@ -77,7 +77,6 @@ JNIEXPORT jboolean JNICALL
 Java_com_dan_mergephotos_MainFragment_00024Companion_makePanoramaNative(JNIEnv */*env*/, jobject /*thiz*/,
                                                                 jlong images_nativeObj,
                                                                 jlong panorama_nativeObj,
-                                                                jlong mask_nativeObj,
                                                                 jint projection) {
 
     std::vector<Mat> images;
@@ -109,11 +108,6 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makePanoramaNative(JNIEnv *
     if (Stitcher::OK != stitcher->stitch(images, panorama))
         return false;
 
-    if (mask_nativeObj) {
-        Mat &mask = *((Mat *) mask_nativeObj);
-        mask = stitcher->resultMask().getMat(ACCESS_READ).clone();
-    }
-    
     return true;
 }
 

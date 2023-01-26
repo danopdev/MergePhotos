@@ -21,7 +21,6 @@ import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import org.opencv.photo.Photo
 import org.opencv.utils.Converters
-import org.opencv.xphoto.Xphoto
 import java.io.File
 import kotlin.concurrent.timer
 
@@ -39,9 +38,9 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         const val ALPHA_8_TO_16 = 256.0
         const val ALPHA_16_TO_8 = 1.0 / ALPHA_8_TO_16
 
-        private fun makePanorama(images: List<Mat>, panorama: Mat, mask: Mat?, projection: Int): Boolean {
+        private fun makePanorama(images: List<Mat>, panorama: Mat, projection: Int): Boolean {
             val imagesMat = Converters.vector_Mat_to_Mat(images)
-            return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, mask?.nativeObj ?: 0, projection)
+            return makePanoramaNative(imagesMat.nativeObj, panorama.nativeObj, projection)
         }
 
         private fun makeLongExposureNearest(
@@ -58,17 +57,12 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
             )
         }
 
-        private external fun makePanoramaNative(images: Long, panorama: Long, mask: Long, projection: Int): Boolean
-        private external fun makeLongExposureNearestNative(
-            images: Long,
-            averageImage: Long,
-            outputImage: Long
-        ): Boolean
+        private external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
+        private external fun makeLongExposureNearestNative(images: Long, averageImage: Long, outputImage: Long): Boolean
 
         fun show(activity: MainActivity) {
             activity.pushView("Merge Photos", MainFragment(activity))
         }
-
     }
 
     private lateinit var binding: MainFragmentBinding
@@ -300,27 +294,16 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
     private fun mergePanorama(prefix: String): Pair<List<Mat>, String> {
         //parameters
         val mode = binding.panoramaProjection.selectedItemPosition
-        val inpaint = binding.panoramaInpaint.isChecked
 
         val inputImages = cache[prefix] ?: return Pair(listOf(), "")
         val output = Mat()
-        val mask: Mat? = if (inpaint) Mat() else null
-        makePanorama(inputImages.toList(), output, mask, mode)
+        makePanorama(inputImages.toList(), output, mode)
 
         val outputList = mutableListOf<Mat>()
-
-        val filePrefix = "panorama_" +
-                binding.panoramaProjection.selectedItem.toString() +
-                (if (inpaint) "_inpaint" else "")
+        val filePrefix = "panorama_" + binding.panoramaProjection.selectedItem.toString()
 
         if (!output.empty()) {
-            if (null != mask) {
-                val finalMat = Mat()
-                Xphoto.inpaint(output, mask, finalMat, Xphoto.INPAINT_SHIFTMAP)
-                if (!finalMat.empty()) outputList.add(finalMat)
-            } else {
-                outputList.add(output)
-            }
+            outputList.add(output)
         }
 
         return Pair(outputList.toList(), filePrefix)
@@ -678,7 +661,6 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         binding.panoramaProjection.setSelection( if (activity.settings.panoramaProjection >= binding.panoramaProjection.adapter.count) 0 else activity.settings.panoramaProjection )
         binding.longexposureAlgorithm.setSelection( if (activity.settings.longexposureAlgorithm >= binding.longexposureAlgorithm.adapter.count) 0 else activity.settings.longexposureAlgorithm )
 
-        binding.panoramaInpaint.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
         binding.checkBoxAlign.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
         binding.checkBoxUseMask.setOnCheckedChangeListener { _, _ -> mergePhotosSmall() }
         binding.btnEditMask.setOnClickListener { editMask() }

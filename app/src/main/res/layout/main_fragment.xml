@@ -60,12 +60,6 @@
                     android:spinnerMode="dropdown" />
             </LinearLayout>
 
-            <Switch
-                android:id="@+id/panoramaInpaint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Fill edges (inpaint)" />
-
         </LinearLayout>
 
         <LinearLayout
