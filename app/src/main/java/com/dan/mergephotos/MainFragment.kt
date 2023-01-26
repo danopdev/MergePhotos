@@ -17,10 +17,9 @@ import org.opencv.android.Utils
 import org.opencv.calib3d.Calib3d
 import org.opencv.core.*
 import org.opencv.video.Video.calcOpticalFlowPyrLK
-import org.opencv.features2d.BFMatcher
-import org.opencv.features2d.ORB
 import org.opencv.imgproc.Imgproc
 import org.opencv.imgproc.Imgproc.INTER_LANCZOS4
+import org.opencv.imgproc.Imgproc.INTER_NEAREST
 import org.opencv.photo.Photo
 import org.opencv.utils.Converters
 import java.io.File
@@ -55,8 +54,23 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
             )
         }
 
+        private fun makeLongExposureLightOrDark(
+            images: List<Mat>,
+            outputImage: Mat,
+            light: Boolean
+        ): Boolean {
+            if (images.size < 3) return false
+            val imagesMat = Converters.vector_Mat_to_Mat(images)
+            return makeLongExposureLightOrDarkNative(
+                imagesMat.nativeObj,
+                outputImage.nativeObj,
+                light
+            )
+        }
+
         private external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
         private external fun makeLongExposureNearestNative(images: Long, averageImage: Long, outputImage: Long): Boolean
+        private external fun makeLongExposureLightOrDarkNative(images: Long, outputImage: Long, light: Boolean): Boolean
 
         fun show(activity: MainActivity) {
             activity.pushView("Merge Photos", MainFragment(activity))
@@ -227,7 +241,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
             image, imageSmall,
             Size(widthSmall.toDouble(), heightSmall.toDouble()),
             0.0, 0.0,
-            if (nearest) Imgproc.INTER_NEAREST else Imgproc.INTER_LANCZOS4
+            if (nearest) INTER_NEAREST else INTER_LANCZOS4
         )
         return imageSmall
     }
@@ -267,27 +281,6 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         }
 
         return Pair(outputList.toList(), filePrefix)
-    }
-
-    private fun toGrayImage(image: Mat): Mat {
-        val grayMat = Mat()
-        Imgproc.cvtColor(image, grayMat, Imgproc.COLOR_BGR2GRAY)
-        return grayMat
-    }
-
-    private fun toNormalizedImage(image: Mat): Mat {
-        val grayMat = toGrayImage(image)
-        val normalizedMat = Mat()
-        Core.normalize(grayMat, normalizedMat, 0.0, 255.0, Core.NORM_MINMAX)
-        return normalizedMat
-    }
-
-    private fun orbDetectAndCompute(orbDetector: ORB, image: Mat, mask: Mat): Pair<MutableList<KeyPoint>, Mat> {
-        val normalizedImage = toNormalizedImage(image)
-        val keyPoints = MatOfKeyPoint()
-        val descriptors = Mat()
-        orbDetector.detectAndCompute(normalizedImage, mask, keyPoints, descriptors)
-        return Pair(keyPoints.toList(), descriptors)
     }
 
     private fun alignImages(prefix: String): Pair<List<Mat>, String> {
@@ -390,28 +383,39 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
     }
 
     private fun mergeLongExposure(prefix: String): Pair<List<Mat>, String> {
-        val averageImages = calculateAverage(prefix)
+        val alignImages = binding.checkBoxAlign.isChecked
         val mode = binding.longexposureAlgorithm.selectedItemPosition
         var resultImages: List<Mat> = listOf()
 
         when(mode) {
-            Settings.LONG_EXPOSURE_AVERAGE -> resultImages = averageImages
+            Settings.LONG_EXPOSURE_AVERAGE -> {
+                val averageImages = calculateAverage(prefix)
+                resultImages = averageImages
+            }
 
             Settings.LONG_EXPOSURE_NEAREST_TO_AVERAGE -> {
+                val averageImages = calculateAverage(prefix)
                 if (averageImages.isNotEmpty()) {
-                    val alignedImages = cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX]
-                    if (null != alignedImages) {
+                    val inputImages = if (alignImages) cache[prefix + CACHE_IMAGES_ALIGNED_SUFFIX] else (cache[prefix] ?: listOf())
+                    if (null != inputImages && inputImages.isNotEmpty()) {
                         val outputImage = Mat()
 
-                        if (makeLongExposureNearest(
-                                alignedImages,
-                                averageImages[0],
-                                outputImage
-                            )
-                        ) {
+                        if (makeLongExposureNearest(inputImages, averageImages[0], outputImage)) {
                             if (!outputImage.empty()) {
                                 resultImages = listOf(outputImage)
                             }
+                        }
+                    }
+                }
+            }
+
+            Settings.LONG_EXPOSURE_LIGHT, Settings.LONG_EXPOSURE_DARK -> {
+                val inputImages = if (alignImages) alignImages(prefix).first else (cache[prefix] ?: listOf())
+                if (inputImages.isNotEmpty()) {
+                    val outputImage = Mat()
+                    if (makeLongExposureLightOrDark(inputImages, outputImage, Settings.LONG_EXPOSURE_LIGHT == mode)) {
+                        if (!outputImage.empty()) {
+                            resultImages = listOf(outputImage)
                         }
                     }
                 }

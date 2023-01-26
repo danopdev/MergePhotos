@@ -29,6 +29,8 @@ class Settings( private val activity: Activity) {
 
         const val LONG_EXPOSURE_AVERAGE = 0
         const val LONG_EXPOSURE_NEAREST_TO_AVERAGE = 1
+        const val LONG_EXPOSURE_LIGHT = 2
+        const val LONG_EXPOSURE_DARK = 3
     }
 
     var mergeMode: Int = MERGE_PANORAMA

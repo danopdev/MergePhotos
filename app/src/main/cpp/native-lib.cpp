@@ -125,4 +125,50 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureNearestNati
     return makeLongExposureNearestNative(images, averageImage, outputImage);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureLightOrDarkNative(
+        JNIEnv */*env*/, jobject /*thiz*/, jlong images_nativeObj, jlong outputImage_nativeObj, jboolean light) {
+
+    std::vector<Mat> images;
+    Mat &imagesAsMat = *((Mat *) images_nativeObj);
+    Mat_to_vector_Mat(imagesAsMat, images);
+    Mat &outputImage = *((Mat *) outputImage_nativeObj);
+
+    std::vector<const Point3_<uchar>*> imageIterators;
+    if (images.size() < 2) return false;
+
+    for (const auto& image: images) {
+        if (!image.isContinuous()) return false;
+        imageIterators.push_back(image.ptr<const Point3_<uchar>>(0));
+    }
+
+    outputImage.create(images[0].rows, images[0].cols, images[0].type());
+    if (outputImage.empty()) return false;
+
+    auto outputImageIt = outputImage.ptr<Point3_<uchar>>(0);
+    int coef =  light ? 1 : -1;
+
+    for (int row = 0; row < images[0].rows; row++) {
+        for (int col = 0; col < images[0].cols; col++, outputImageIt++) {
+            const Point3_<uchar>* nearestImageIt = nullptr;
+            int bestValue = 0;
+
+            for (auto& imageIt: imageIterators) {
+                int value = coef * (imageIt->x + imageIt->x + imageIt->z);
+
+                if (nullptr == nearestImageIt || bestValue < value) {
+                    bestValue = value;
+                    nearestImageIt = imageIt;
+                }
+
+                imageIt++;
+            }
+
+            if (nullptr != nearestImageIt) *outputImageIt = *nearestImageIt;
+        }
+    }
+
+    return true;
+}
+
 }

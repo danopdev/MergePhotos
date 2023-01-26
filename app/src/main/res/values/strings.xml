@@ -24,16 +24,7 @@
     <string-array name="longexposure_algorithms">
         <item>Average</item>
         <item>Nearest to Average</item>
-    </string-array>
-    <string-array name="jpeg_quality">
-        <item>60</item>
-        <item>75</item>
-        <item>90</item>
-        <item>100</item>
-    </string-array>
-    <string-array name="depth">
-        <item>Auto</item>
-        <item>8 bits</item>
-        <item>16 bits</item>
+        <item>Light</item>
+        <item>Dark</item>
     </string-array>
 </resources>
