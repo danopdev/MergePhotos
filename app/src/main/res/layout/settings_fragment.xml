@@ -20,6 +20,7 @@
                     android:id="@+id/textView4"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:paddingBottom="5dp"
                     android:text="@string/ouput_format"
                     android:textAppearance="@style/TextAppearance.AppCompat.Medium"
                     android:textStyle="bold" />
@@ -28,7 +29,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:paddingTop="5dp"
+                    android:paddingBottom="5dp">
 
                     <TextView
                         android:id="@+id/textView8"
