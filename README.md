@@ -12,6 +12,7 @@ Internaly it uses OpenCL.
 [Ideas](#ideas):
 * [Inpaint](#inpaint)
 * [Long exposure improuvements](#long-exposure-improuvements)
+* Focus stacking
 
 ## Panorama ##
 
