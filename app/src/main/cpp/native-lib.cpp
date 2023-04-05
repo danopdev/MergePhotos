@@ -197,15 +197,15 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeFocusStackNative(
         }
 
         Mat tmp, gray, laplace;
-        cvtColor(image, tmp, COLOR_RGB2GRAY);
-        resize(tmp, gray, Size(scaledCols, scaledRows));
+        cvtColor(image, tmp, COLOR_BGR2GRAY);
+        resize(tmp, gray, Size(scaledCols, scaledRows), 0.0, 0.0, INTER_AREA);
 
         GaussianBlur(gray, gray, Size(3,3), 0.0);
         Laplacian(gray, laplace, CV_16S, 1);
         laplace = abs(laplace);
-        GaussianBlur(laplace, laplace, Size(31,31), 0.0);
+        GaussianBlur(laplace, laplace, Size(31,31), 0.0); //It's huge but really reduce out of focus halo
 
-        resize(laplace, tmp, Size(image.cols, image.rows));
+        resize(laplace, tmp, Size(image.cols, image.rows), 0.0, 0.0, INTER_LANCZOS4);
 
         laplaces.push_back(tmp);
     }
