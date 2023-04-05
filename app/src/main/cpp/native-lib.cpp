@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "opencv2/stitching.hpp"
+#include "opencv2/imgproc.hpp"
 
 
 using namespace cv;
@@ -146,7 +147,7 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureLightOrDark
     if (outputImage.empty()) return false;
 
     auto outputImageIt = outputImage.ptr<Point3_<uchar>>(0);
-    int coef =  light ? 1 : -1;
+    int coef = light ? 1 : -1;
 
     for (int row = 0; row < images[0].rows; row++) {
         for (int col = 0; col < images[0].cols; col++, outputImageIt++) {
@@ -165,6 +166,66 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureLightOrDark
             }
 
             if (nullptr != nearestImageIt) *outputImageIt = *nearestImageIt;
+        }
+    }
+
+    return true;
+}
+
+#define FOCUS_STACK_WORKING_SIZE    800
+
+JNIEXPORT jboolean JNICALL
+Java_com_dan_mergephotos_MainFragment_00024Companion_makeFocusStackNative(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong images_nativeObj, jlong outputImage_nativeObj) {
+
+    std::vector<Mat> images;
+    Mat &imagesAsMat = *((Mat *) images_nativeObj);
+    Mat_to_vector_Mat(imagesAsMat, images);
+    Mat &outputImage = *((Mat *) outputImage_nativeObj);
+
+    std::vector<Mat> laplaces;
+
+    for (const auto& image: images) {
+        int scaledCols, scaledRows;
+
+        if (image.rows > image.cols) {
+            scaledRows = FOCUS_STACK_WORKING_SIZE;
+            scaledCols = FOCUS_STACK_WORKING_SIZE * image.cols / image.rows;
+        } else {
+            scaledCols = FOCUS_STACK_WORKING_SIZE;
+            scaledRows = FOCUS_STACK_WORKING_SIZE * image.rows / image.cols;
+        }
+
+        Mat tmp, gray, laplace;
+        cvtColor(image, tmp, COLOR_RGB2GRAY);
+        resize(tmp, gray, Size(scaledCols, scaledRows));
+
+        GaussianBlur(gray, gray, Size(3,3), 0.0);
+        Laplacian(gray, laplace, CV_16S, 1);
+        laplace = abs(laplace);
+        GaussianBlur(laplace, laplace, Size(31,31), 0.0);
+
+        resize(laplace, tmp, Size(image.cols, image.rows));
+
+        laplaces.push_back(tmp);
+    }
+
+    outputImage.create(images[0].rows, images[0].cols, images[0].type());
+
+    for (int row = 0; row < outputImage.rows; row++) {
+        for (int col = 0; col < outputImage.cols; col++) {
+            int16_t bestValue = laplaces[0].at<int16_t>(row, col);
+            int bestIndex = 0;
+
+            for (int index = 1; index < images.size(); index++) {
+                int16_t value = laplaces[index].at<int16_t>(row, col);
+                if (value > bestValue) {
+                    bestValue = value;
+                    bestIndex = index;
+                }
+            }
+
+            outputImage.at<Point3_<uchar>>(row, col) = images[bestIndex].at<Point3_<uchar>>(row, col);
         }
     }
 

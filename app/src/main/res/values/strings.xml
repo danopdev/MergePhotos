@@ -15,6 +15,7 @@
         <item>Long exposure</item>
         <item>HDR</item>
         <item>Align</item>
+        <item>Focus Stack</item>
     </string-array>
     <string-array name="panorama_projections">
         <item>Plane</item>

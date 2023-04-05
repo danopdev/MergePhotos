@@ -59,7 +59,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
             outputImage: Mat,
             light: Boolean
         ): Boolean {
-            if (images.size < 3) return false
+            if (images.size < 2) return false
             val imagesMat = Converters.vector_Mat_to_Mat(images)
             return makeLongExposureLightOrDarkNative(
                 imagesMat.nativeObj,
@@ -68,9 +68,22 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
             )
         }
 
+        private fun makeFocusStack(
+            images: List<Mat>,
+            outputImage: Mat
+        ): Boolean {
+            if (images.size < 2) return false
+            val imagesMat = Converters.vector_Mat_to_Mat(images)
+            return makeFocusStackNative(
+                imagesMat.nativeObj,
+                outputImage.nativeObj
+            )
+        }
+
         private external fun makePanoramaNative(images: Long, panorama: Long, projection: Int): Boolean
         private external fun makeLongExposureNearestNative(images: Long, averageImage: Long, outputImage: Long): Boolean
         private external fun makeLongExposureLightOrDarkNative(images: Long, outputImage: Long, light: Boolean): Boolean
+        private external fun makeFocusStackNative(images: Long, outputImage: Long): Boolean
 
         fun show(activity: MainActivity) {
             activity.pushView("Merge Photos", MainFragment(activity))
@@ -88,7 +101,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                 binding.spinnerMerge -> {
                     binding.panoramaOptions.isVisible = Settings.MERGE_PANORAMA == position
                     binding.longexposureOptions.isVisible = Settings.MERGE_LONG_EXPOSURE == position
-                    binding.alignOptions.isVisible = Settings.MERGE_LONG_EXPOSURE == position || Settings.MERGE_HDR == position || Settings.MERGE_ALIGN == position
+                    binding.alignOptions.isVisible = Settings.MERGE_PANORAMA != position
                 }
             }
 
@@ -447,6 +460,20 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
         return Pair(outputList, "hdr")
     }
 
+    private fun mergeFocusStack(prefix: String): Pair<List<Mat>, String> {
+        val alignImages = binding.checkBoxAlign.isChecked
+        val inputImages = if (alignImages) alignImages(prefix).first else ( cache[prefix] ?: listOf() )
+        val output = Mat()
+        var success = false
+
+        if (inputImages.size >= 2) {
+            success = makeFocusStack(inputImages, output)
+        }
+
+        val outputList = if (!success || output.empty()) listOf() else listOf(output)
+        return Pair(outputList, "focusstack_")
+    }
+
     private fun mergePhotos(prefix: String, l: (output: List<Mat>, name: String) -> Unit) {
         val inputImages = cache[prefix]
         if (null == inputImages || inputImages.size < 2) return
@@ -461,6 +488,7 @@ class MainFragment(activity: MainActivity) : AppFragment(activity) {
                 Settings.MERGE_LONG_EXPOSURE -> mergeLongExposure(prefix)
                 Settings.MERGE_HDR -> mergeHdr(prefix)
                 Settings.MERGE_ALIGN -> alignImages(prefix)
+                Settings.MERGE_FOCUS_STACK -> mergeFocusStack(prefix)
                 else -> Pair(listOf(), "")
             }
 

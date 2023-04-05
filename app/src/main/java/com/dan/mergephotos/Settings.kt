@@ -26,6 +26,7 @@ class Settings( private val activity: Activity) {
         const val MERGE_LONG_EXPOSURE = 1
         const val MERGE_HDR = 2
         const val MERGE_ALIGN = 3
+        const val MERGE_FOCUS_STACK = 4
 
         const val LONG_EXPOSURE_AVERAGE = 0
         const val LONG_EXPOSURE_NEAREST_TO_AVERAGE = 1
