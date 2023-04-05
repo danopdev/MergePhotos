@@ -8,28 +8,31 @@
 using namespace cv;
 
 
-inline static unsigned int calculateColorDelta(const Point3_<uchar>* a, const Point3_<uchar>* b) {
+typedef Point3_<uchar> Pixel;
+
+
+inline static unsigned int calculateColorDelta(const Pixel* a, const Pixel* b) {
     return abs(a->x - b->x) + abs(a->y - b->y) + abs(a->z - b->z);
 }
 
 
 static bool makeLongExposureNearestNative( std::vector<Mat> &images, const Mat &averageImage, Mat &outputImage) {
-    const auto *meanImageIt = averageImage.ptr<Point3_<uchar>>(0);
-    std::vector<const Point3_<uchar>*> imageIterators;
+    const auto *meanImageIt = averageImage.ptr<Pixel>(0);
+    std::vector<const Pixel*> imageIterators;
 
     for (const auto& image: images) {
         if (!image.isContinuous() || image.size != averageImage.size || image.type() != averageImage.type() ) return false;
-        imageIterators.push_back(image.ptr<const Point3_<uchar>>(0));
+        imageIterators.push_back(image.ptr<const Pixel>(0));
     }
 
     outputImage.create(averageImage.rows, averageImage.cols, averageImage.type());
     if (outputImage.empty()) return false;
 
-    auto outputImageIt = outputImage.ptr<Point3_<uchar>>(0);
+    auto outputImageIt = outputImage.ptr<Pixel>(0);
 
     for (int row = 0; row < averageImage.rows; row++) {
         for (int col = 0; col < averageImage.cols; col++, meanImageIt++, outputImageIt++) {
-            const Point3_<uchar>* nearestImageIt = meanImageIt;
+            const Pixel* nearestImageIt = meanImageIt;
             unsigned int nearestDelta = UINT_MAX;
 
             for (auto& imageIt: imageIterators) {
@@ -135,23 +138,23 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureLightOrDark
     Mat_to_vector_Mat(imagesAsMat, images);
     Mat &outputImage = *((Mat *) outputImage_nativeObj);
 
-    std::vector<const Point3_<uchar>*> imageIterators;
+    std::vector<const Pixel*> imageIterators;
     if (images.size() < 2) return false;
 
     for (const auto& image: images) {
         if (!image.isContinuous()) return false;
-        imageIterators.push_back(image.ptr<const Point3_<uchar>>(0));
+        imageIterators.push_back(image.ptr<const Pixel>(0));
     }
 
     outputImage.create(images[0].rows, images[0].cols, images[0].type());
     if (outputImage.empty()) return false;
 
-    auto outputImageIt = outputImage.ptr<Point3_<uchar>>(0);
+    auto outputImageIt = outputImage.ptr<Pixel>(0);
     int coef = light ? 1 : -1;
 
     for (int row = 0; row < images[0].rows; row++) {
         for (int col = 0; col < images[0].cols; col++, outputImageIt++) {
-            const Point3_<uchar>* nearestImageIt = nullptr;
+            const Pixel* nearestImageIt = nullptr;
             int bestValue = 0;
 
             for (auto& imageIt: imageIterators) {
@@ -225,7 +228,7 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeFocusStackNative(
                 }
             }
 
-            outputImage.at<Point3_<uchar>>(row, col) = images[bestIndex].at<Point3_<uchar>>(row, col);
+            outputImage.at<Pixel>(row, col) = images[bestIndex].at<Pixel>(row, col);
         }
     }
 
