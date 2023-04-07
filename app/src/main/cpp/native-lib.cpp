@@ -11,44 +11,37 @@ using namespace cv;
 typedef Point3_<uchar> Pixel;
 
 
-inline static unsigned int calculateColorDelta(const Pixel* a, const Pixel* b) {
-    return abs(a->x - b->x) + abs(a->y - b->y) + abs(a->z - b->z);
+inline static unsigned int calculateColorDelta(const Pixel& a, const Pixel& b) {
+    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);
+}
+
+
+inline static int calculatePixelValue(const Pixel& pixel) {
+    return pixel.x + pixel.y + pixel.z;
 }
 
 
 static bool makeLongExposureNearestNative( std::vector<Mat> &images, const Mat &averageImage, Mat &outputImage) {
-    const auto *meanImageIt = averageImage.ptr<Pixel>(0);
-    std::vector<const Pixel*> imageIterators;
-
-    for (const auto& image: images) {
-        if (!image.isContinuous() || image.size != averageImage.size || image.type() != averageImage.type() ) return false;
-        imageIterators.push_back(image.ptr<const Pixel>(0));
-    }
-
     outputImage.create(averageImage.rows, averageImage.cols, averageImage.type());
     if (outputImage.empty()) return false;
 
-    auto outputImageIt = outputImage.ptr<Pixel>(0);
+    outputImage.forEach<Pixel>(
+        [images, averageImage](Pixel& pixel, const int position[]) -> void {
+            const auto& refPixel = averageImage.at<Pixel>(position);
+            int bestIndex = 0;
+            unsigned int bestValue = calculateColorDelta(refPixel, images[0].at<Pixel>(position));
 
-    for (int row = 0; row < averageImage.rows; row++) {
-        for (int col = 0; col < averageImage.cols; col++, meanImageIt++, outputImageIt++) {
-            const Pixel* nearestImageIt = meanImageIt;
-            unsigned int nearestDelta = UINT_MAX;
-
-            for (auto& imageIt: imageIterators) {
-                unsigned int delta = calculateColorDelta(meanImageIt, imageIt);
-
-                if (nearestDelta > delta) {
-                    nearestDelta = delta;
-                    nearestImageIt = imageIt;
+            for (int i = 1; i < images.size(); i++) {
+                unsigned int value = calculateColorDelta(refPixel, images[i].at<Pixel>(position));
+                if (value < bestValue) {
+                    bestValue = value;
+                    bestIndex = i;
                 }
-
-                imageIt++;
             }
 
-            *outputImageIt = *nearestImageIt;
+            pixel = images[bestIndex].at<Pixel>(position);
         }
-    }
+    );
 
     return true;
 }
@@ -121,7 +114,6 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureNearestNati
     Mat &outputImage = *((Mat *) outputImage_nativeObj);
 
     if ( averageImage.empty()
-         || !averageImage.isContinuous()
          || averageImage.size.dims() != 2
          || !(averageImage.type() == CV_8UC3 || averageImage.type() == CV_16UC3))
         return false;
@@ -138,39 +130,29 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureLightOrDark
     Mat_to_vector_Mat(imagesAsMat, images);
     Mat &outputImage = *((Mat *) outputImage_nativeObj);
 
-    std::vector<const Pixel*> imageIterators;
     if (images.size() < 2) return false;
-
-    for (const auto& image: images) {
-        if (!image.isContinuous()) return false;
-        imageIterators.push_back(image.ptr<const Pixel>(0));
-    }
 
     outputImage.create(images[0].rows, images[0].cols, images[0].type());
     if (outputImage.empty()) return false;
 
-    auto outputImageIt = outputImage.ptr<Pixel>(0);
     int coef = light ? 1 : -1;
 
-    for (int row = 0; row < images[0].rows; row++) {
-        for (int col = 0; col < images[0].cols; col++, outputImageIt++) {
-            const Pixel* nearestImageIt = nullptr;
-            int bestValue = 0;
+    outputImage.forEach<Pixel>(
+            [images, coef](Pixel& pixel, const int position[]) -> void {
+                int bestIndex = 0;
+                int bestValue = coef * calculatePixelValue(images[0].at<Pixel>(position));
 
-            for (auto& imageIt: imageIterators) {
-                int value = coef * (imageIt->x + imageIt->x + imageIt->z);
-
-                if (nullptr == nearestImageIt || bestValue < value) {
-                    bestValue = value;
-                    nearestImageIt = imageIt;
+                for (int i = 1; i < images.size(); i++) {
+                    int value = coef * calculatePixelValue(images[i].at<Pixel>(position));
+                    if (bestValue < value) {
+                        bestValue = value;
+                        bestIndex = i;
+                    }
                 }
 
-                imageIt++;
+                pixel = images[bestIndex].at<Pixel>(position);
             }
-
-            if (nullptr != nearestImageIt) *outputImageIt = *nearestImageIt;
-        }
-    }
+    );
 
     return true;
 }
@@ -203,10 +185,10 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeFocusStackNative(
         cvtColor(image, tmp, COLOR_BGR2GRAY);
         resize(tmp, gray, Size(scaledCols, scaledRows), 0.0, 0.0, INTER_AREA);
 
-        GaussianBlur(gray, gray, Size(3,3), 0.0);
-        Laplacian(gray, laplace, CV_16S, 1);
-        laplace = abs(laplace);
-        GaussianBlur(laplace, laplace, Size(31,31), 0.0); //It's huge but really reduce out of focus halo
+        GaussianBlur(gray, tmp, Size(3,3), 0.0);
+        Laplacian(tmp, laplace, CV_16S, 1);
+        laplace = abs(tmp);
+        GaussianBlur(laplace, tmp, Size(31,31), 0.0); //It's huge but really reduce out of focus halo
 
         resize(laplace, tmp, Size(image.cols, image.rows), 0.0, 0.0, INTER_LANCZOS4);
 
@@ -214,23 +196,24 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeFocusStackNative(
     }
 
     outputImage.create(images[0].rows, images[0].cols, images[0].type());
+    if (outputImage.empty()) return false;
 
-    for (int row = 0; row < outputImage.rows; row++) {
-        for (int col = 0; col < outputImage.cols; col++) {
-            int16_t bestValue = laplaces[0].at<int16_t>(row, col);
-            int bestIndex = 0;
+    outputImage.forEach<Pixel>(
+            [laplaces, images](Pixel& pixel, const int position[]) -> void {
+                int bestIndex = 0;
+                int16_t bestValue = laplaces[0].at<int16_t>(position);
 
-            for (int index = 1; index < images.size(); index++) {
-                int16_t value = laplaces[index].at<int16_t>(row, col);
-                if (value > bestValue) {
-                    bestValue = value;
-                    bestIndex = index;
+                for (int i = 1; i < laplaces.size(); i++) {
+                    int16_t value = laplaces[i].at<int16_t>(position);
+                    if (bestValue < value) {
+                        bestValue = value;
+                        bestIndex = i;
+                    }
                 }
-            }
 
-            outputImage.at<Pixel>(row, col) = images[bestIndex].at<Pixel>(row, col);
-        }
-    }
+                pixel = images[bestIndex].at<Pixel>(position);
+            }
+    );
 
     return true;
 }
