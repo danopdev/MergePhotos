@@ -11,17 +11,21 @@ using namespace cv;
 typedef Point3_<uchar> Pixel;
 
 
-inline static unsigned int calculateColorDelta(const Pixel& a, const Pixel& b) {
-    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);
+static
+unsigned int calculateDistance(const Pixel& p1, const Pixel& p2) {
+    double rmean = (p1.x + p2.x)/2;
+    int r = p1.x - p2.x;
+    int g = p1.y - p2.y;
+    int b = p1.z - p2.z;
+    double wr = 2 + rmean/256;
+    double wg = 4.0;
+    double wb = 2 + (255-rmean)/256;
+    return (unsigned int)sqrt(wr*r*r + wg*g*g + wb*b*b);
 }
 
 
-inline static int calculatePixelValue(const Pixel& pixel) {
-    return pixel.x + pixel.y + pixel.z;
-}
-
-
-static bool makeLongExposureNearestNative( std::vector<Mat> &images, const Mat &averageImage, Mat &outputImage) {
+static
+bool makeLongExposureNearestNative( std::vector<Mat> &images, const Mat &averageImage, Mat &outputImage) {
     outputImage.create(averageImage.rows, averageImage.cols, averageImage.type());
     if (outputImage.empty()) return false;
 
@@ -29,10 +33,10 @@ static bool makeLongExposureNearestNative( std::vector<Mat> &images, const Mat &
         [images, averageImage](Pixel& pixel, const int position[]) -> void {
             const auto& refPixel = averageImage.at<Pixel>(position);
             int bestIndex = 0;
-            unsigned int bestValue = calculateColorDelta(refPixel, images[0].at<Pixel>(position));
+            unsigned int bestValue = calculateDistance(refPixel, images[0].at<Pixel>(position));
 
             for (int i = 1; i < images.size(); i++) {
-                unsigned int value = calculateColorDelta(refPixel, images[i].at<Pixel>(position));
+                unsigned int value = calculateDistance(refPixel, images[i].at<Pixel>(position));
                 if (value < bestValue) {
                     bestValue = value;
                     bestIndex = i;
@@ -63,6 +67,7 @@ void Mat_to_vector_Mat(cv::Mat &mat, std::vector<cv::Mat> &v_mat) {
 
 
 extern "C" {
+
 
 JNIEXPORT jboolean JNICALL
 Java_com_dan_mergephotos_MainFragment_00024Companion_makePanoramaNative(JNIEnv */*env*/, jobject /*thiz*/,
@@ -121,9 +126,14 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureNearestNati
     return makeLongExposureNearestNative(images, averageImage, outputImage);
 }
 
+
 JNIEXPORT jboolean JNICALL
 Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureLightOrDarkNative(
         JNIEnv */*env*/, jobject /*thiz*/, jlong images_nativeObj, jlong outputImage_nativeObj, jboolean light) {
+
+    static const Pixel black(0, 0, 0);
+    static const Pixel white(255, 255, 255);
+    const Pixel& refPixel = light ? white : black;
 
     std::vector<Mat> images;
     Mat &imagesAsMat = *((Mat *) images_nativeObj);
@@ -135,15 +145,13 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureLightOrDark
     outputImage.create(images[0].rows, images[0].cols, images[0].type());
     if (outputImage.empty()) return false;
 
-    int coef = light ? 1 : -1;
-
     outputImage.forEach<Pixel>(
-            [images, coef](Pixel& pixel, const int position[]) -> void {
+            [images, refPixel](Pixel& pixel, const int position[]) -> void {
                 int bestIndex = 0;
-                int bestValue = coef * calculatePixelValue(images[0].at<Pixel>(position));
+                unsigned int bestValue = calculateDistance(images[0].at<Pixel>(position), refPixel);
 
                 for (int i = 1; i < images.size(); i++) {
-                    int value = coef * calculatePixelValue(images[i].at<Pixel>(position));
+                    unsigned int value = calculateDistance(images[i].at<Pixel>(position), refPixel);
                     if (bestValue < value) {
                         bestValue = value;
                         bestIndex = i;
@@ -157,7 +165,9 @@ Java_com_dan_mergephotos_MainFragment_00024Companion_makeLongExposureLightOrDark
     return true;
 }
 
+
 #define FOCUS_STACK_WORKING_SIZE    800
+
 
 JNIEXPORT jboolean JNICALL
 Java_com_dan_mergephotos_MainFragment_00024Companion_makeFocusStackNative(
